@@ -1,6 +1,0 @@
-PaymentID, Amount, PaymentDate, PaymentMethod, TenantID
-1, 1700.00, 2023-03-01, Cash, 1
-2, 1800.00, 2023-04-01, Check, 2
-3, 1900.00, 2023-05-01, Venmo, 3
-4, 2000.00, 2023-06-01, Zelle, 4
-5, 2100.00, 2023-07-01, Bank Transfer, 5

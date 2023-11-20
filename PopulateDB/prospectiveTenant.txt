@@ -1,2 +1,0 @@
-ProspectiveTenantID|Name|VisitDate|EligibilityInfo
-4|Girly Pop|2023-01-10|Tina's friend

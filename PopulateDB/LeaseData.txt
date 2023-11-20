@@ -1,3 +1,0 @@
-LeaseID, TenantID, AptNumber, LeaseStartDate, LeaseEndDate, MonthlyRent, SecurityDeposit
-1, 1, 101, 2023-01-01, 2023-12-31, 1200, 2400
-2, 2, 102, 2023-01-01, 2023-12-31, 1300, 2600

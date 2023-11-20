@@ -1,3 +1,0 @@
-PrivateAmenityID, AmenityName, Cost
-1, "Private Pool", 1500
-2, "Gym Access", 50

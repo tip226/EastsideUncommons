@@ -1,4 +1,0 @@
-PetID, PetName, PetType, TenantID
-3, Minky, Monkey, 3
-4, Polly, Parrot, 4
-5, Dolly, Dolphin, 5

@@ -1,4 +1,0 @@
-AmenityID, AmenityName, Cost
-1, Swimming Pool, 10000
-2, Gym, 15000
-3, Tennis Court, 20000
