@@ -1,0 +1,4 @@
+TenantID, TenantName, Email, PhoneNumber
+3, Tina Pham, tip226@lehigh.edu, 484-937-6437
+4, Girly Pop, girlypop@gmail.om, 610-555-5555
+5, Pink Monkey, pinkmonkey@gmail.com, 929-231-6007

@@ -1,0 +1,8 @@
+PropertyID, Street, City, State, ZIPCode
+3, 789 Oak St, AnotherCity, AC, 13579
+4, 216 Pine St, LastCity, LC, 24680
+5, 357 Maple St, FinalCity, FC, 97531
+6, 468 Walnut St, EndCity, EC, 86420
+7, 579 Cedar St, FinishCity, FIC, 75319
+8, 680 Spruce St, DoneCity, DC, 64280
+9, 791 Birch St, CompleteCity, CC, 53197

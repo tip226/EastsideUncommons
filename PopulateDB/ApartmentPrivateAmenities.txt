@@ -1,0 +1,4 @@
+AptNumber, PrivateAmenityID
+101, 1
+101, 2
+102, 1
