@@ -5,6 +5,7 @@ import db.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.ResultSet;
 import java.util.Scanner;
 
 public class CompanyManager implements CompanyManagerInterface {
@@ -164,8 +165,8 @@ public class CompanyManager implements CompanyManagerInterface {
     public void manageAmenitiesForApartments(int propertyId) {
         while (true) {
             System.out.println("Amenity Management");
-            System.out.println("1: Add New Common Amenity to Property");
-            System.out.println("2: Add New Private Amenity to an Apartment");
+            System.out.println("1: Add New Common Amenity");
+            System.out.println("2: Add New Private Amenity");
             System.out.println("3: Assign Common Amenity to Property");
             System.out.println("4: Assign Private Amenity to an Apartment");
             System.out.println("5: Exit Amenity Management");
@@ -205,6 +206,18 @@ public class CompanyManager implements CompanyManagerInterface {
             int amenityId = scanner.nextInt();
             scanner.nextLine(); // consume the rest of the line
 
+            // Check if the amenity is already assigned to the property
+            String checkSql = "SELECT COUNT(*) FROM Property_CommonAmenities WHERE PropertyID = ? AND AmenityID = ?";
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                checkStmt.setInt(1, propertyId);
+                checkStmt.setInt(2, amenityId);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("This amenity is already assigned to the property.");
+                    return;
+                }
+            }
+
             // Insert into Property_CommonAmenities table
             String sql = "INSERT INTO Property_CommonAmenities (PropertyID, AmenityID) VALUES (?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -237,6 +250,18 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.print("Enter the Apartment Number to assign this amenity: ");
             int apartmentNumber = scanner.nextInt();
             scanner.nextLine(); // consume the rest of the line
+
+            // Check if the amenity is already assigned to the apartment
+            String checkSql = "SELECT COUNT(*) FROM Apartment_PrivateAmenities WHERE AptNumber = ? AND PrivateAmenityID = ?";
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                checkStmt.setInt(1, apartmentNumber);
+                checkStmt.setInt(2, privateAmenityId);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.out.println("This amenity is already assigned to the apartment.");
+                    return;
+                }
+            }
 
             // Insert into Apartment_PrivateAmenities table
             String sql = "INSERT INTO Apartment_PrivateAmenities (AptNumber, PrivateAmenityID) VALUES (?, ?)";
@@ -307,7 +332,7 @@ public class CompanyManager implements CompanyManagerInterface {
             stmt.setDouble(3, cost);
             stmt.setString(4, costType);
             stmt.executeUpdate();
-            System.out.println("Amenity added successfully.");
+            System.out.println("Common amenity added successfully.");
         } catch (SQLException e) {
             System.out.println("Error adding amenity: " + e.getMessage());
         }
@@ -316,22 +341,41 @@ public class CompanyManager implements CompanyManagerInterface {
     public void addNewPrivateAmenity() {
         System.out.print("Enter amenity name: ");
         String amenityName = scanner.nextLine();
+        if (amenityName.isEmpty()) {
+            System.out.println("Amenity name cannot be empty.");
+            return;
+        }
 
+        String isAvailableStr;
         System.out.print("Is the amenity available (true/false)? ");
-        boolean isAvailable = scanner.nextBoolean();
-
-        System.out.print("Enter cost: ");
-        double cost = scanner.nextDouble();
+        while (true) {
+            if (scanner.hasNextBoolean()) {
+                boolean isAvailable = scanner.nextBoolean();
+                isAvailableStr = isAvailable ? "Y" : "N";
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter 'true' or 'false': ");
+                scanner.next(); // clear the invalid input
+            }
+        }
+        
+        System.out.print("Enter cost: $");
+        double cost;
+        while (true) {
+            if (scanner.hasNextDouble()) {
+                cost = scanner.nextDouble();
+                if (cost >= 0) break;
+                else System.out.print("Invalid input. Please enter a non-negative number: ");
+            } else {
+                System.out.print("Invalid input. Please enter a number: ");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
         scanner.nextLine(); // Consume the rest of the line
 
         System.out.print("Enter cost type (One-time, Monthly, Included): ");
         String costType = scanner.nextLine();
-
-        // Convert isAvailable to 'Y' or 'N'
-        String isAvailableStr = isAvailable ? "Y" : "N";
-
-        // Validate costType
         if (!costType.equals("One-time") && !costType.equals("Monthly") && !costType.equals("Included")) {
             System.out.println("Invalid cost type. Must be 'One-time', 'Monthly', or 'Included'.");
             return;
@@ -345,7 +389,7 @@ public class CompanyManager implements CompanyManagerInterface {
             stmt.setDouble(3, cost);
             stmt.setString(4, costType);
             stmt.executeUpdate();
-            System.out.println("Amenity added successfully.");
+            System.out.println("Private amenity added successfully.");
         } catch (SQLException e) {
             System.out.println("Error adding amenity: " + e.getMessage());
         }
