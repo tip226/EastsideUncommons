@@ -77,13 +77,24 @@ public class CompanyManager implements CompanyManagerInterface {
         DBTablePrinter.printTable(conn, "Property");
 
         System.out.print("Enter the Property ID for which to generate apartments: ");
-        int propertyId = scanner.nextInt();
+        int propertyId;
+        while (!scanner.hasNextInt() || (propertyId = scanner.nextInt()) <= 0) {
+            System.out.println("Invalid input. Please enter a positive integer: ");
+            scanner.nextLine(); // clear the invalid input
+        }
 
         System.out.print("Enter the number of apartments to generate: ");
-        int numberOfApartments = scanner.nextInt();
-
+        int numberOfApartments;
+        while (!scanner.hasNextInt() || (numberOfApartments = scanner.nextInt()) <= 0) {
+            System.out.println("Invalid input. Please enter a positive integer: ");
+            scanner.nextLine(); // clear the invalid input
+        }
         System.out.print("Enter common apartment size (square feet): ");
-        int size = scanner.nextInt();
+        double size;
+        while (!scanner.hasNextDouble() || (size = scanner.nextDouble()) <= 0) {
+            System.out.println("Invalid input. Please enter a positive number for square feet: ");
+            scanner.nextLine(); // clear the invalid input
+        }
 
         System.out.print("Enter number of bedrooms: ");
         int bedrooms;
@@ -112,10 +123,18 @@ public class CompanyManager implements CompanyManagerInterface {
         }
 
         System.out.print("Enter monthly rent: $");
-        int monthlyRent = scanner.nextInt();
+        double monthlyRent;
+        while (!scanner.hasNextDouble() || (monthlyRent = scanner.nextDouble()) < 0) {
+            System.out.println("Invalid input. Please enter a non-negative number: ");
+            scanner.nextLine(); // clear the invalid input
+        }
 
         System.out.print("Enter security deposit: $");
-        int securityDeposit = scanner.nextInt();
+        double securityDeposit;
+        while (!scanner.hasNextDouble() || (securityDeposit = scanner.nextDouble()) < 0) {
+            System.out.println("Invalid input. Please enter a non-negative number: ");
+            scanner.nextLine(); // clear the invalid input
+        }
 
         // Insert apartments into the database
         String sql = "INSERT INTO Apartments (AptSize, Bedrooms, Bathrooms, MonthlyRent, SecurityDeposit, PropertyID_Ref) VALUES (?, ?, ?, ?, ?, ?)";
@@ -123,11 +142,11 @@ public class CompanyManager implements CompanyManagerInterface {
             conn.setAutoCommit(false); // Use transaction to ensure all inserts are successful
 
             for (int i = 0; i < numberOfApartments; i++) {
-                stmt.setInt(1, size);
+                stmt.setDouble(1, size);
                 stmt.setInt(2, bedrooms);
                 stmt.setDouble(3, bathrooms);
-                stmt.setInt(4, monthlyRent);
-                stmt.setInt(5, securityDeposit);
+                stmt.setDouble(4, monthlyRent);
+                stmt.setDouble(5, securityDeposit);
                 stmt.setInt(6, propertyId);
                 stmt.addBatch();
             }
