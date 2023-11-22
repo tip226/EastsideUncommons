@@ -272,7 +272,7 @@ public class TablePopulator {
                 String[] tokens = line.split(", ");
                 
                 int privateAmenityID = Integer.parseInt(tokens[0].trim());
-                String amenityName = tokens[1].replace("\"", "").trim(); // Removing quotes around the amenity name
+                String petName = tokens[1].trim();
                 double cost = Double.parseDouble(tokens[2].trim());
 
                 stmt.setInt(1, privateAmenityID);
