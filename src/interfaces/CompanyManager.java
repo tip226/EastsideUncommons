@@ -20,9 +20,9 @@ public class CompanyManager implements CompanyManagerInterface {
     public void showMenu() {
         while (true) {
             System.out.println("Company Manager Interface");
-            System.out.println("1: Add New Property");
-            System.out.println("2: Automatically Generate Apartments for a Property");
-            System.out.println("3: Edit Property");
+            System.out.println("1: Manage Properties");
+            System.out.println("2: Manage Apartments");
+            System.out.println("3: Manage Amenities");
             System.out.println("4: Exit");
 
             System.out.print("Select an option: ");
@@ -31,13 +31,13 @@ public class CompanyManager implements CompanyManagerInterface {
 
             switch (option) {
                 case 1:
-                    addNewProperty();
+                    manageProperty();
                     break;
                 case 2:
-                    generateApartmentsForProperty();
+                    manageApartments();
                     break;
                 case 3:
-                    editProperty();
+                    manageAmenities();
                     break;
                 case 4:
                     System.out.println("Exiting Company Manager Interface.");
@@ -46,6 +46,99 @@ public class CompanyManager implements CompanyManagerInterface {
                     System.out.println("Invalid option selected. Please try again.");
                     break;
             }
+        }
+    }
+
+    private void manageProperty() {
+        System.out.println("Property Management");
+        System.out.println("1: Add New Property");
+        System.out.println("2: Edit Property");
+        System.out.println("3: Remove Property");
+        System.out.println("4: Back to Main Menu");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        switch (choice) {
+            case 1:
+                addNewProperty();
+                break;
+            case 2:
+                editProperty();
+                break;
+            case 3:
+                removeProperty();
+                break;
+            case 4:
+                return;
+            default:
+                System.out.println("Invalid option selected. Please try again.");
+        }
+    }
+
+    private void manageApartments() {
+        System.out.println("Apartment Management");
+        System.out.println("1: Automatically Generate Apartments for a Property");
+        System.out.println("2: Edit Apartment");
+        System.out.println("3: Remove Apartment");
+        System.out.println("4: Back to Main Menu");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        switch (choice) {
+            case 1:
+                generateApartmentsForProperty();
+                break;
+            case 2:
+                editApartment();
+                break;
+            case 3:
+                removeApartment();
+                break;
+            case 4:
+                return;
+            default:
+                System.out.println("Invalid option selected. Please try again.");
+        }
+    }
+
+    private void manageAmenities() {
+        System.out.println("Amenity Management");
+        System.out.println("1: Add New Common Amenity");
+        System.out.println("2: Edit Common Amenity");
+        System.out.println("3: Remove Common Amenity");
+        System.out.println("4: Add New Private Amenity");
+        System.out.println("5: Edit Private Amenity");
+        System.out.println("6: Remove Private Amenity");
+        System.out.println("7: Back to Main Menu");
+
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        switch (choice) {
+            case 1:
+                addNewCommonAmenity();
+                break;
+            case 2:
+                editCommonAmenity();
+                break;
+            case 3:
+                removeCommonAmenity();
+                break;
+            case 4:
+                addNewPrivateAmenity();
+                break;
+            case 5:
+                editPrivateAmenity();
+                break;
+            case 6:
+                removePrivateAmenity();
+                break;
+            case 7:
+                return;
+            default:
+                System.out.println("Invalid option selected. Please try again.");
         }
     }
 
@@ -79,12 +172,23 @@ public class CompanyManager implements CompanyManagerInterface {
         DBTablePrinter.printTable(conn, "Property");
 
         System.out.print("Enter the Property ID to edit: ");
-        int propertyId;
-        while (!scanner.hasNextInt() || (propertyId = scanner.nextInt()) <= 0) {
-            System.out.println("Invalid input. Please enter a positive integer: ");
-            scanner.nextLine(); // clear the invalid input
+        int propertyId = 0;
+        boolean validPropertyId = false;
+        while (!validPropertyId) {
+            System.out.print("Enter the Property ID for which to generate apartments: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // clear the invalid input
+            }
+            propertyId = scanner.nextInt();
+            scanner.nextLine(); // consume the rest of the line
+
+            if (propertyId > 0 && checkPropertyExists(propertyId)) {
+                validPropertyId = true;
+            } else {
+                System.out.println("No property found with the given ID. Please enter a valid Property ID.");
+            }
         }
-        scanner.nextLine(); // consume the rest of the line
 
         System.out.print("New Street: ");
         String street = scanner.nextLine();
@@ -115,16 +219,192 @@ public class CompanyManager implements CompanyManagerInterface {
         }
     }
 
-    public void generateApartmentsForProperty() {
-        // TableViewer tableViewer = new TableViewer();
-        // tableViewer.displayTable(conn, "Property");
+    private void removeProperty() {
         DBTablePrinter.printTable(conn, "Property");
 
-        System.out.print("Enter the Property ID for which to generate apartments: ");
-        int propertyId;
-        while (!scanner.hasNextInt() || (propertyId = scanner.nextInt()) <= 0) {
+        System.out.print("Enter the Property ID to remove: ");
+        int propertyId = 0;
+        boolean validPropertyId = false;
+        while (!validPropertyId) {
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // clear the invalid input
+            }
+            propertyId = scanner.nextInt();
+            scanner.nextLine(); // consume the rest of the line
+
+            if (propertyId > 0 && checkPropertyExists(propertyId)) {
+                validPropertyId = true;
+            } else {
+                System.out.println("No property found with the given ID. Please enter a valid Property ID.");
+            }
+        }
+
+        try {
+            // Start transaction
+            conn.setAutoCommit(false);
+
+            // Delete dependencies in Apartment_PrivateAmenities
+            String deleteApartmentPrivateAmenitiesSql = "DELETE FROM Apartment_PrivateAmenities WHERE AptNumber IN (SELECT AptNumber FROM Apartments WHERE PropertyID_Ref = ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteApartmentPrivateAmenitiesSql)) {
+                stmt.setInt(1, propertyId);
+                stmt.executeUpdate();
+            }
+
+            // Delete dependencies in Property_CommonAmenities
+            String deletePropertyCommonAmenitiesSql = "DELETE FROM Property_CommonAmenities WHERE PropertyID = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deletePropertyCommonAmenitiesSql)) {
+                stmt.setInt(1, propertyId);
+                stmt.executeUpdate();
+            }
+
+            // Delete dependencies in Apartments
+            String deleteApartmentsSql = "DELETE FROM Apartments WHERE PropertyID_Ref = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteApartmentsSql)) {
+                stmt.setInt(1, propertyId);
+                stmt.executeUpdate();
+            }
+
+            // Delete the property
+            String deletePropertySql = "DELETE FROM Property WHERE PropertyID = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deletePropertySql)) {
+                stmt.setInt(1, propertyId);
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    System.out.println("Property removed successfully.");
+                } else {
+                    System.out.println("No property found with the given ID.");
+                }
+            }
+
+            // Commit transaction
+            conn.commit();
+        } catch (SQLException e) {
+            System.out.println("Error removing property: " + e.getMessage());
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error on transaction rollback: " + ex.getMessage());
+            }
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
+        }
+    }
+
+    public void editApartment() {
+        DBTablePrinter.printTable(conn, "Apartments");
+
+        System.out.print("Enter the Apartment Number to edit: ");
+        int aptNumber;
+        while (!scanner.hasNextInt() || (aptNumber = scanner.nextInt()) <= 0) {
             System.out.println("Invalid input. Please enter a positive integer: ");
             scanner.nextLine(); // clear the invalid input
+        }
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Apartment Size (square feet): ");
+        double size = scanner.nextDouble();
+        System.out.print("New Number of Bedrooms: ");
+        int bedrooms = scanner.nextInt();
+        System.out.print("New Number of Bathrooms: ");
+        double bathrooms = scanner.nextDouble();
+        System.out.print("New Monthly Rent: $");
+        double monthlyRent = scanner.nextDouble();
+        System.out.print("New Security Deposit: $");
+        double securityDeposit = scanner.nextDouble();
+
+        // Update apartment data in database
+        String sql = "UPDATE Apartments SET AptSize = ?, Bedrooms = ?, Bathrooms = ?, MonthlyRent = ?, SecurityDeposit = ? WHERE AptNumber = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, size);
+            stmt.setInt(2, bedrooms);
+            stmt.setDouble(3, bathrooms);
+            stmt.setDouble(4, monthlyRent);
+            stmt.setDouble(5, securityDeposit);
+            stmt.setInt(6, aptNumber);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Apartment updated successfully.");
+            } else {
+                System.out.println("No apartment found with the given number.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating apartment: " + e.getMessage());
+        }
+    }
+
+    private void removeApartment() {
+        DBTablePrinter.printTable(conn, "Apartments");
+
+        System.out.print("Enter the Apartment Number to remove: ");
+        int aptNumber = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        try {
+            // Start transaction
+            conn.setAutoCommit(false);
+
+            // Delete dependencies in Apartment_PrivateAmenities
+            String deleteApartmentPrivateAmenitiesSql = "DELETE FROM Apartment_PrivateAmenities WHERE AptNumber = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteApartmentPrivateAmenitiesSql)) {
+                stmt.setInt(1, aptNumber);
+                stmt.executeUpdate();
+            }
+
+            // Delete the apartment
+            String deleteApartmentSql = "DELETE FROM Apartments WHERE AptNumber = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(deleteApartmentSql)) {
+                stmt.setInt(1, aptNumber);
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    System.out.println("Apartment removed successfully.");
+                } else {
+                    System.out.println("No apartment found with the given number.");
+                }
+            }
+
+            // Commit transaction
+            conn.commit();
+        } catch (SQLException e) {
+            System.out.println("Error removing apartment: " + e.getMessage());
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error on transaction rollback: " + ex.getMessage());
+            }
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
+        }
+    }
+
+    public void generateApartmentsForProperty() {
+        DBTablePrinter.printTable(conn, "Property");
+
+        int propertyId = 0;
+        boolean validPropertyId = false;
+        while (!validPropertyId) {
+            System.out.print("Enter the Property ID for which to generate apartments: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // clear the invalid input
+            }
+            propertyId = scanner.nextInt();
+            scanner.nextLine(); // consume the rest of the line
+
+            if (propertyId > 0 && checkPropertyExists(propertyId)) {
+                validPropertyId = true;
+            } else {
+                System.out.println("No property found with the given ID. Please enter a valid Property ID.");
+            }
         }
 
         System.out.print("Enter the number of apartments to generate: ");
@@ -345,7 +625,7 @@ public class CompanyManager implements CompanyManagerInterface {
     }
 
     public void addNewCommonAmenity() {
-        System.out.print("Enter amenity name: ");
+        System.out.print("Enter common amenity name: ");
         String amenityName = scanner.nextLine();
         if (amenityName.isEmpty()) {
             System.out.println("Amenity name cannot be empty.");
@@ -382,7 +662,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
         System.out.print("Enter cost type (One-time, Monthly, Included): ");
         String costType = scanner.nextLine();
-        if (!costType.equals("One-time") && !costType.equals("Monthly") && !costType.equals("Included")) {
+        if (!costType.equalsIgnoreCase("One-time") && !costType.equalsIgnoreCase("Monthly") && !costType.equalsIgnoreCase("Included")) {
             System.out.println("Invalid cost type. Must be 'One-time', 'Monthly', or 'Included'.");
             return;
         }
@@ -401,8 +681,70 @@ public class CompanyManager implements CompanyManagerInterface {
         }
     }
 
+    private void editCommonAmenity() {
+        DBTablePrinter.printTable(conn, "CommonAmenities");
+
+        System.out.print("Enter the Common Amenity ID to edit: ");
+        int amenityId = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Common Amenity Name: ");
+        String amenityName = scanner.nextLine();
+
+        System.out.print("Is the amenity available (y/n)? ");
+        String isAvailableInput = scanner.nextLine();
+        String isAvailableStr = "y".equalsIgnoreCase(isAvailableInput) ? "Y" : "N";
+
+        System.out.print("New Cost: ");
+        double cost = scanner.nextDouble();
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Cost Type (One-time, Monthly, Included): ");
+        String costType = scanner.nextLine();
+
+        String sql = "UPDATE CommonAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, amenityName);
+            stmt.setString(2, isAvailableStr);
+            stmt.setDouble(3, cost);
+            stmt.setString(4, costType);
+            stmt.setInt(5, amenityId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Common amenity updated successfully.");
+            } else {
+                System.out.println("No common amenity found with the given ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating common amenity: " + e.getMessage());
+        }
+    }
+
+    private void removeCommonAmenity() {
+        DBTablePrinter.printTable(conn, "CommonAmenities");
+
+        System.out.print("Enter the Common Amenity ID to remove: ");
+        int amenityId = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        String sql = "DELETE FROM CommonAmenities WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, amenityId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Common amenity removed successfully.");
+            } else {
+                System.out.println("No common amenity found with the given ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error removing common amenity: " + e.getMessage());
+        }
+    }
+
     public void addNewPrivateAmenity() {
-        System.out.print("Enter amenity name: ");
+        System.out.print("Enter private amenity name: ");
         String amenityName = scanner.nextLine();
         if (amenityName.isEmpty()) {
             System.out.println("Amenity name cannot be empty.");
@@ -439,7 +781,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
         System.out.print("Enter cost type (One-time, Monthly, Included): ");
         String costType = scanner.nextLine();
-        if (!costType.equals("One-time") && !costType.equals("Monthly") && !costType.equals("Included")) {
+        if (!costType.equalsIgnoreCase("One-time") && !costType.equalsIgnoreCase("Monthly") && !costType.equalsIgnoreCase("Included")) {
             System.out.println("Invalid cost type. Must be 'One-time', 'Monthly', or 'Included'.");
             return;
         }
@@ -458,4 +800,79 @@ public class CompanyManager implements CompanyManagerInterface {
         }
     }
 
+    private void editPrivateAmenity() {
+        DBTablePrinter.printTable(conn, "PrivateAmenities");
+
+        System.out.print("Enter the Private Amenity ID to edit: ");
+        int amenityId = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Private Amenity Name: ");
+        String amenityName = scanner.nextLine();
+
+        System.out.print("Is the amenity available (y/n)? ");
+        String isAvailableInput = scanner.nextLine();
+        String isAvailableStr = "y".equalsIgnoreCase(isAvailableInput) ? "Y" : "N";
+
+        System.out.print("New Cost: ");
+        double cost = scanner.nextDouble();
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Cost Type (One-time, Monthly, Included): ");
+        String costType = scanner.nextLine();
+
+        String sql = "UPDATE PrivateAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE PrivateAmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, amenityName);
+            stmt.setString(2, isAvailableStr);
+            stmt.setDouble(3, cost);
+            stmt.setString(4, costType);
+            stmt.setInt(5, amenityId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Private amenity updated successfully.");
+            } else {
+                System.out.println("No private amenity found with the given ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating private amenity: " + e.getMessage());
+        }
+    }
+
+    private void removePrivateAmenity() {
+        DBTablePrinter.printTable(conn, "PrivateAmenities");
+
+        System.out.print("Enter the Amenity ID to remove: ");
+        int privateAmenityId = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        String sql = "DELETE FROM PrivateAmenities WHERE PrivateAmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, privateAmenityId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Private amenity removed successfully.");
+            } else {
+                System.out.println("No private amenity found with the given ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error removing private amenity: " + e.getMessage());
+        }
+    }
+
+    private boolean checkPropertyExists(int propertyId) {
+        String sql = "SELECT COUNT(*) FROM Property WHERE PropertyID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, propertyId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking property existence: " + e.getMessage());
+        }
+        return false;
+    }
 }
