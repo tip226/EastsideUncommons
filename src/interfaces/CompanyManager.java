@@ -145,14 +145,34 @@ public class CompanyManager implements CompanyManagerInterface {
     public void addNewProperty() {
         // Prompt user for property details
         System.out.println("Enter property details...");
+
         System.out.print("Street: ");
         String street = scanner.nextLine();
+        while (!isValidStreet(street)) {
+            System.out.println("Invalid street. Please try again.");
+            street = scanner.nextLine();
+        }
+
         System.out.print("City: ");
         String city = scanner.nextLine();
-        System.out.print("State: ");
+        while (!isValidCity(city)) {
+            System.out.println("Invalid city. Please try again.");
+            city = scanner.nextLine();
+        }
+
+        System.out.print("State (2 characters): ");
         String state = scanner.nextLine();
+        while (!isValidState(state)) {
+            System.out.println("Invalid state. Should be 2 characters long. Please try again.");
+            state = scanner.nextLine();
+        }
+
         System.out.print("ZIP Code: ");
         String zipCode = scanner.nextLine();
+        while (!isValidZipCode(zipCode)) {
+            System.out.println("Invalid ZIP Code. Should be 5 digits. Please try again.");
+            zipCode = scanner.nextLine();
+        }
 
         // Insert property data into database
         String sql = "INSERT INTO Property (Street, City, State, ZIPCode) VALUES (?, ?, ?, ?)";
@@ -166,6 +186,28 @@ public class CompanyManager implements CompanyManagerInterface {
         } catch (SQLException e) {
             System.out.println("Error adding property: " + e.getMessage());
         }
+    }
+
+    // Validation Methods
+
+    private boolean isValidStreet(String street) {
+        // Example: Check if the street is not empty
+        return street != null && !street.trim().isEmpty();
+    }
+
+    private boolean isValidCity(String city) {
+        // Example: Check if the city is not empty
+        return city != null && !city.trim().isEmpty();
+    }
+
+    private boolean isValidState(String state) {
+        // Example: Check if the state is 2 characters long
+        return state != null && state.length() == 2 && state.matches("^[a-zA-Z]{2}$");
+    }
+
+    private boolean isValidZipCode(String zipCode) {
+        // Example: U.S. ZIP code validation (5 digits or 5+4 format)
+        return zipCode != null && zipCode.matches("^\\d{5}(-\\d{4})?$");
     }
 
     public void editProperty() {
