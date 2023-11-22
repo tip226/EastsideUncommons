@@ -660,12 +660,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
         scanner.nextLine(); // Consume the rest of the line
 
-        System.out.print("Enter cost type (One-time, Monthly, Included): ");
-        String costType = scanner.nextLine();
-        if (!costType.equalsIgnoreCase("One-time") && !costType.equalsIgnoreCase("Monthly") && !costType.equalsIgnoreCase("Included")) {
-            System.out.println("Invalid cost type. Must be 'One-time', 'Monthly', or 'Included'.");
-            return;
-        }
+        String costType = standardizeCostType();
 
         // Insert data into the database
         String sql = "INSERT INTO CommonAmenities (AmenityName, IsAvailable, Cost, CostType) VALUES (?, ?, ?, ?)";
@@ -699,8 +694,7 @@ public class CompanyManager implements CompanyManagerInterface {
         double cost = scanner.nextDouble();
         scanner.nextLine(); // consume the rest of the line
 
-        System.out.print("New Cost Type (One-time, Monthly, Included): ");
-        String costType = scanner.nextLine();
+        String costType = standardizeCostType();
 
         String sql = "UPDATE CommonAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE AmenityID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -779,12 +773,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
         scanner.nextLine(); // Consume the rest of the line
 
-        System.out.print("Enter cost type (One-time, Monthly, Included): ");
-        String costType = scanner.nextLine();
-        if (!costType.equalsIgnoreCase("One-time") && !costType.equalsIgnoreCase("Monthly") && !costType.equalsIgnoreCase("Included")) {
-            System.out.println("Invalid cost type. Must be 'One-time', 'Monthly', or 'Included'.");
-            return;
-        }
+        String costType = standardizeCostType();
 
         // Insert data into the database
         String sql = "INSERT INTO PrivateAmenities (AmenityName, IsAvailable, Cost, CostType) VALUES (?, ?, ?, ?)";
@@ -818,8 +807,7 @@ public class CompanyManager implements CompanyManagerInterface {
         double cost = scanner.nextDouble();
         scanner.nextLine(); // consume the rest of the line
 
-        System.out.print("New Cost Type (One-time, Monthly, Included): ");
-        String costType = scanner.nextLine();
+        String costType = standardizeCostType();
 
         String sql = "UPDATE PrivateAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE PrivateAmenityID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -874,5 +862,22 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.println("Error checking property existence: " + e.getMessage());
         }
         return false;
+    }
+
+    private String standardizeCostType() {
+        while (true) {
+            System.out.print("New Cost Type (One-time, Monthly, Included): ");
+            String costTypeInput = scanner.nextLine();
+
+            if (costTypeInput.equalsIgnoreCase("One-time")) {
+                return "One-time";
+            } else if (costTypeInput.equalsIgnoreCase("Monthly")) {
+                return "Monthly";
+            } else if (costTypeInput.equalsIgnoreCase("Included")) {
+                return "Included";
+            } else {
+                System.out.println("Invalid input. Please enter 'One-time', 'Monthly', or 'Included'.");
+            }
+        }
     }
 }
