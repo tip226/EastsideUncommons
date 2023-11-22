@@ -260,7 +260,7 @@ public class TablePopulator {
     }
 
     public static void populatePrivateAmenitiesTable(Connection conn, String filePath) {
-        String sql = "INSERT INTO PrivateAmenities (PrivateAmenityID, AmenityName, Cost) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO PrivateAmenities (AmenityName, IsAvailable, Cost, CostType) VALUES (?, ?, ?, ?)";
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -271,13 +271,15 @@ public class TablePopulator {
             while ((line = reader.readLine()) != null) {
                 String[] tokens = line.split(", ");
                 
-                int privateAmenityID = Integer.parseInt(tokens[0].trim());
-                String petName = tokens[1].trim();
+                String amenityName = tokens[0].trim();
+                String isAvailable = tokens[1].trim();
                 double cost = Double.parseDouble(tokens[2].trim());
+                String costType = tokens[3].trim();
 
-                stmt.setInt(1, privateAmenityID);
-                stmt.setString(2, amenityName);
+                stmt.setString(1, amenityName);
+                stmt.setString(2, isAvailable);
                 stmt.setDouble(3, cost);
+                stmt.setString(4, costType);
 
                 stmt.executeUpdate();
             }
