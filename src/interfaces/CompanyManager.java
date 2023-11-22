@@ -1,6 +1,6 @@
 package interfaces;
 
-import db.TablePopulator;
+import db.*;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -57,7 +57,7 @@ public class CompanyManager implements CompanyManagerInterface {
         String zipCode = scanner.nextLine();
 
         // Insert property data into database
-        String sql = "INSERT INTO Property (PropertyID, Street, City, State, ZIPCode) VALUES (DEFAULT, ?, ?, ?, ?)";
+        String sql = "INSERT INTO Property (Street, City, State, ZIPCode) VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, street);
             stmt.setString(2, city);
@@ -71,10 +71,63 @@ public class CompanyManager implements CompanyManagerInterface {
     }
 
     public void generateApartmentsForProperty() {
-        // Logic to automatically generate apartments for a property
-        System.out.println("Generating apartments for a property...");
-        // This method will involve more complex logic to generate apartment data
-        // based on user input and insert it into the database.
+        // TableViewer tableViewer = new TableViewer();
+        // tableViewer.displayTable(conn, "Property");
+        DBTablePrinter.printTable(conn, "Property");
+        
+        System.out.print("Enter the Property ID for which to generate apartments: ");
+        int propertyId = scanner.nextInt();
+
+        System.out.print("Enter the number of apartments to generate: ");
+        int numberOfApartments = scanner.nextInt();
+
+        System.out.print("Enter common apartment size: ");
+        int size = scanner.nextInt();
+
+        System.out.print("Enter number of bedrooms: ");
+        int bedrooms = scanner.nextInt();
+
+        System.out.print("Enter number of bathrooms: ");
+        int bathrooms = scanner.nextInt();
+
+        System.out.print("Enter monthly rent: ");
+        int monthlyRent = scanner.nextInt();
+
+        System.out.print("Enter security deposit: ");
+        int securityDeposit = scanner.nextInt();
+
+        // Insert apartments into the database
+        String sql = "INSERT INTO Apartments (AptSize, Bedrooms, Bathrooms, MonthlyRent, SecurityDeposit, PropertyID_Ref) VALUES (?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            conn.setAutoCommit(false); // Use transaction to ensure all inserts are successful
+
+            for (int i = 0; i < numberOfApartments; i++) {
+                stmt.setInt(1, size);
+                stmt.setInt(2, bedrooms);
+                stmt.setInt(3, bathrooms);
+                stmt.setInt(4, monthlyRent);
+                stmt.setInt(5, securityDeposit);
+                stmt.setInt(6, propertyId);
+                stmt.addBatch();
+            }
+
+            stmt.executeBatch();
+            conn.commit();
+            System.out.println(numberOfApartments + " apartments added successfully for Property ID " + propertyId);
+        } catch (SQLException e) {
+            System.out.println("Error generating apartments: " + e.getMessage());
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error on transaction rollback: " + ex.getMessage());
+            }
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
+        }
     }
 
 }
