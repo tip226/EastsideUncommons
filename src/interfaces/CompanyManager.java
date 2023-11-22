@@ -22,7 +22,8 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.println("Company Manager Interface");
             System.out.println("1: Add New Property");
             System.out.println("2: Automatically Generate Apartments for a Property");
-            System.out.println("3: Exit");
+            System.out.println("3: Edit Property");
+            System.out.println("4: Exit");
 
             System.out.print("Select an option: ");
             int option = scanner.nextInt();
@@ -36,6 +37,9 @@ public class CompanyManager implements CompanyManagerInterface {
                     generateApartmentsForProperty();
                     break;
                 case 3:
+                    editProperty();
+                    break;
+                case 4:
                     System.out.println("Exiting Company Manager Interface.");
                     return;
                 default:
@@ -68,6 +72,46 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.println("Property added successfully.");
         } catch (SQLException e) {
             System.out.println("Error adding property: " + e.getMessage());
+        }
+    }
+
+    public void editProperty() {
+        DBTablePrinter.printTable(conn, "Property");
+
+        System.out.print("Enter the Property ID to edit: ");
+        int propertyId;
+        while (!scanner.hasNextInt() || (propertyId = scanner.nextInt()) <= 0) {
+            System.out.println("Invalid input. Please enter a positive integer: ");
+            scanner.nextLine(); // clear the invalid input
+        }
+        scanner.nextLine(); // consume the rest of the line
+
+        System.out.print("New Street: ");
+        String street = scanner.nextLine();
+        System.out.print("New City: ");
+        String city = scanner.nextLine();
+        System.out.print("New State: ");
+        String state = scanner.nextLine();
+        System.out.print("New ZIP Code: ");
+        String zipCode = scanner.nextLine();
+
+        // Update property data in database
+        String sql = "UPDATE Property SET Street = ?, City = ?, State = ?, ZIPCode = ? WHERE PropertyID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, street);
+            stmt.setString(2, city);
+            stmt.setString(3, state);
+            stmt.setString(4, zipCode);
+            stmt.setInt(5, propertyId);
+
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Property updated successfully.");
+            } else {
+                System.out.println("No property found with the given ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating property: " + e.getMessage());
         }
     }
 
