@@ -13,18 +13,18 @@ public class Developer implements DeveloperInterface{
     private Scanner scanner;
 
     // Predefined file paths for data population
-    private static final String PROPERTY_FILE_PATH = "EastsideUncommons/resources/textdata/Properties.txt";
-    private static final String COMMON_AMENITIES_FILE_PATH = "EastsideUncommons/resources/textdata/CommonAmenities.txt";
-    private static final String APARTMENTS_FILE_PATH = "EastsideUncommons/resources/textdata/Apartments.txt";
-    private static final String TENANTS_FILE_PATH = "EastsideUncommons/resources/textdata/Tenants.txt";
-    private static final String PAYMENTS_FILE_PATH = "EastsideUncommons/resources/textdata/Payments.txt";
-    private static final String PETS_FILE_PATH = "EastsideUncommons/resources/textdata/Pets.txt";
-    private static final String PROPERTY_COMMON_AMENITIES_FILE_PATH = "EastsideUncommons/resources/textdata/Property_CommonAmenities.txt";
-    private static final String PRIVATE_AMENITIES_FILE_PATH = "EastsideUncommons/resources/textdata/PrivateAmenities.txt";
-    private static final String APARTMENT_PRIVATE_AMENITIES_FILE_PATH = "EastsideUncommons/resources/textdata/Apartment_PrivateAmenities.txt";
-    private static final String LEASE_FILE_PATH = "EastsideUncommons/resources/textdata/Lease.txt";
-    private static final String PROSPECTIVE_TENANT_FILE_PATH = "EastsideUncommons/resources/textdata/ProspectiveTenant.txt";
-    private static final String FINANCIAL_REPORT_FILE_PATH = "EastsideUncommons/resources/textdata/FinancialReport.txt";
+    private static final String PROPERTY_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Properties.txt";
+    private static final String COMMON_AMENITIES_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/CommonAmenities.txt";
+    private static final String APARTMENTS_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Apartments.txt";
+    private static final String TENANTS_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Tenants.txt";
+    private static final String PAYMENTS_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Payments.txt";
+    private static final String PETS_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Pets.txt";
+    private static final String PROPERTY_COMMON_AMENITIES_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/Property_CommonAmenities.txt";
+    private static final String PRIVATE_AMENITIES_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/PrivateAmenities.txt";
+    private static final String APARTMENT_PRIVATE_AMENITIES_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/ApartmentPrivateAmenities.txt";
+    private static final String LEASE_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/LeaseData.txt";
+    private static final String PROSPECTIVE_TENANT_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/ProspectiveTenant.txt";
+    private static final String FINANCIAL_REPORT_FILE_PATH = "/home/tip226/cse241/EastsideUncommons/resources/textdata/FinancialReport.txt";
 
     public Developer(Connection conn) {
         this.conn = conn;
@@ -48,7 +48,7 @@ public class Developer implements DeveloperInterface{
                     showPopulateMenu();
                     break;
                 case 2:
-                    showPopulateMenu();
+                    populateAllTables();
                     break;
                 case 3:
                     System.out.println("Exiting Developer Interface.");
@@ -186,6 +186,7 @@ public class Developer implements DeveloperInterface{
     }
 
     public void populateAllTables() {
+        boolean success = true;
         try {
             System.out.println("Automatically populating all tables...");
 
@@ -201,10 +202,15 @@ public class Developer implements DeveloperInterface{
             TablePopulator.populateLeaseTable(conn, LEASE_FILE_PATH);
             TablePopulator.populateProspectiveTenantTable(conn, PROSPECTIVE_TENANT_FILE_PATH);
             TablePopulator.populateFinancialReportTable(conn, FINANCIAL_REPORT_FILE_PATH);
-            System.out.println("All tables populated successfully.");
         } catch (Exception e) {
             System.out.println("An error occurred while populating tables: " + e.getMessage());
             e.printStackTrace();
+            success = false;
+        }
+        if (success) {
+            System.out.println("Successfully populated all tables.");
+        } else {
+            System.out.println("Failed to populate all tables.");
         }
     }
 }

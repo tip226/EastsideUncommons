@@ -36,7 +36,7 @@ public class TablePopulator {
 
                 stmt.executeUpdate();
             }
-            System.out.println("Data inserted successfully.");
+            System.out.println("Data for Property inserted successfully.");
 
         } catch (IOException e) {
             System.out.println("Failed to read from the file.");

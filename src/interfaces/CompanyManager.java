@@ -17,7 +17,6 @@ public class CompanyManager implements CompanyManagerInterface {
     }
 
     public void showMenu() {
-        System.out.println("Company Manager Interface");
         while (true) {
             System.out.println("Company Manager Interface");
             System.out.println("1: Add New Property");
@@ -58,7 +57,7 @@ public class CompanyManager implements CompanyManagerInterface {
         String zipCode = scanner.nextLine();
 
         // Insert property data into database
-        String sql = "INSERT INTO Property (Street, City, State, ZIPCode) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO Property (PropertyID, Street, City, State, ZIPCode) VALUES (DEFAULT, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, street);
             stmt.setString(2, city);

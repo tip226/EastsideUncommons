@@ -30,7 +30,7 @@ public class Tenant implements TenantInterface{
             while (rs.next()) {
                 int id = rs.getInt("TenantID");
                 String name = rs.getString("TenantName");
-                System.out.println(id + "\t" + name);
+                System.out.println(id + "\t\t" + name);
             }
 
             System.out.print("Enter Tenant ID to select: ");

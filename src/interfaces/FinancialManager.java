@@ -16,12 +16,13 @@ public class FinancialManager implements FinancialManagerInterface {
     }
 
     public void showMenu() {
-        System.out.println("Financial Manager Interface");
-        System.out.println("1. View Property Data");
-        System.out.println("2. View Enterprise Financial Report");
-        System.out.println("3. Exit");
+        while(true) {
+            System.out.println("Financial Manager Interface");
+            System.out.println("1. View Property Data");
+            System.out.println("2. View Enterprise Financial Report");
+            System.out.println("3. Exit");
 
-        System.out.print("Select an option: ");
+            System.out.print("Select an option: ");
             int option = scanner.nextInt();
             scanner.nextLine(); // consume the rest of the line
 
@@ -39,6 +40,7 @@ public class FinancialManager implements FinancialManagerInterface {
                     System.out.println("Invalid option selected. Please try again.");
                     break;
             }
+        }
     }
 
     public void viewPropertyData() {
