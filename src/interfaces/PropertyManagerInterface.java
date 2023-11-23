@@ -2,9 +2,10 @@ package interfaces;
 
 public interface PropertyManagerInterface {
     void showMenu();
-    void recordVisitsData();
+    void recordVisitData();
     void recordLeaseData();
     void recordMoveOut();
-    void addPersonOrPetToLease();
+    void addPersonToLease();
+    void addPetToLease();
     void setMoveOutDate();
 }

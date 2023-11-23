@@ -19,10 +19,12 @@ public class DatabaseConnector {
     public Connection connect() {
         do {
             try {
-                System.out.print("Enter Oracle user id: ");
-                String user = scanner.nextLine();
-                System.out.print("Enter Oracle password for " + user + ": ");
-                String pass = scanner.nextLine();
+                // System.out.print("Enter Oracle user id: ");
+                // String user = scanner.nextLine();
+                // System.out.print("Enter Oracle password for " + user + ": ");
+                // String pass = scanner.nextLine();
+                String user = "tip226"; // hard coded for now for faster testing
+                String pass = "tina@CSE241"; // hard coded for now for faster testing
                 conn = DriverManager.getConnection(DB_URL, user, pass);
                 System.out.println("Super! I'm connected.");
                 return conn;
