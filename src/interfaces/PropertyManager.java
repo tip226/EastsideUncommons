@@ -333,8 +333,15 @@ public class PropertyManager implements PropertyManagerInterface{
         System.out.println("Enter Lease Start Date (YYYY-MM-DD):");
         java.sql.Date leaseStartDate = validateAndInputDate();
 
-        System.out.println("Enter Lease End Date (YYYY-MM-DD):");
-        java.sql.Date leaseEndDate = validateAndInputDate();
+        // Input and validate Lease End Date
+        java.sql.Date leaseEndDate = null;
+        while (leaseEndDate == null || leaseEndDate.before(leaseStartDate)) {
+            System.out.println("Enter Lease End Date (YYYY-MM-DD):");
+            leaseEndDate = validateAndInputDate();
+            if (leaseEndDate.before(leaseStartDate)) {
+                System.out.println("Lease End Date must be after Lease Start Date.");
+            }
+        }
 
         System.out.println("Enter Monthly Rent:");
         double monthlyRent = scanner.nextDouble();
