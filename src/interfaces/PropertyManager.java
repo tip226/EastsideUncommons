@@ -362,9 +362,71 @@ public class PropertyManager implements PropertyManagerInterface{
             stmt.setDouble(6, securityDeposit);
             stmt.setDate(7, moveOutDate);
             stmt.executeUpdate();
-            System.out.println("Lease added successfully.");
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Lease added successfully.");
+
+                // Add security deposit to dues
+                double depositAmount = securityDeposit;
+                addSecurityDepositToDues(tenantID, depositAmount);
+                System.out.println("Security deposit added to tenant's dues.");
+            }
         } catch (SQLException e) {
             System.out.println("Error adding lease: " + e.getMessage());
+        }
+    }
+
+    public void addSecurityDepositToDues(int tenantId, double securityDeposit) {
+        // SQL query to add a security deposit charge to a tenant's dues
+        String sql = "INSERT INTO Payments (Amount, PaymentDate, PaymentMethod, TenantID) VALUES (?, ?, ?, ?)";
+        String paymentBreakdownSql = "INSERT INTO PaymentBreakdown (PaymentID, Description, Amount) VALUES (?, ?, ?)";
+
+        try {
+            // Start a transaction
+            conn.setAutoCommit(false);
+
+            // Insert a payment record
+            PreparedStatement pstmt = conn.prepareStatement(sql, new String[]{"PaymentID"});
+            pstmt.setDouble(1, securityDeposit);
+            pstmt.setDate(2, new java.sql.Date(System.currentTimeMillis())); // Use current date or a specific date
+            pstmt.setString(3, "Pending"); // Placeholder for the payment method
+            pstmt.setInt(4, tenantId);
+            pstmt.executeUpdate();
+
+            // Retrieve the generated PaymentID
+            ResultSet rs = pstmt.getGeneratedKeys();
+            int paymentId = 0;
+            if (rs.next()) {
+                paymentId = rs.getInt(1);
+            }
+
+            // Insert into PaymentBreakdown
+            if (paymentId != 0) {
+                PreparedStatement pstmtBreakdown = conn.prepareStatement(paymentBreakdownSql);
+                pstmtBreakdown.setInt(1, paymentId);
+                pstmtBreakdown.setString(2, "Security Deposit");
+                pstmtBreakdown.setDouble(3, securityDeposit);
+                pstmtBreakdown.executeUpdate();
+            }
+
+            // Commit the transaction
+            conn.commit();
+
+        } catch (SQLException e) {
+            try {
+                // Rollback in case of error
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error during rollback: " + ex.getMessage());
+            }
+            System.out.println("SQL Error: " + e.getMessage());
+        } finally {
+            try {
+                // Reset auto-commit to default
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
         }
     }
 

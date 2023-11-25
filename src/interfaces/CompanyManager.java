@@ -612,12 +612,30 @@ public class CompanyManager implements CompanyManagerInterface {
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
                     System.out.println("Amenity assigned successfully to the property.");
+                    
+                    // Automatically charge all tenants in the property
+                    chargeTenantsForPropertyAmenity(propertyId, amenityId);
                 } else {
                     System.out.println("Failed to assign the amenity.");
                 }
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    private void chargeTenantsForPropertyAmenity(int propertyId, int amenityId) {
+        // SQL to find all tenants in the property and charge them
+        String findTenantsSql = "SELECT TenantID FROM Lease WHERE AptNumber IN (SELECT AptNumber FROM Apartments WHERE PropertyID_Ref = ?)";
+        try (PreparedStatement findTenantsStmt = conn.prepareStatement(findTenantsSql)) {
+            findTenantsStmt.setInt(1, propertyId);
+            ResultSet rs = findTenantsStmt.executeQuery();
+            while (rs.next()) {
+                int tenantId = rs.getInt("TenantID");
+                addAmenityChargeToDues(tenantId, amenityId, true);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error charging tenants: " + e.getMessage());
         }
     }
 
@@ -656,13 +674,100 @@ public class CompanyManager implements CompanyManagerInterface {
 
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
-                    System.out.println("Amenity assigned successfully to the apartment.");
+                    System.out.println(" Private amenity assigned successfully to the apartment.");
+
+                    // Automatically charge the tenant of the apartment
+                    chargeTenantForApartmentAmenity(apartmentNumber, privateAmenityId);
                 } else {
                     System.out.println("Failed to assign the amenity.");
                 }
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    private void chargeTenantForApartmentAmenity(int apartmentNumber, int amenityId) {
+        // SQL to find the tenant of the apartment and charge them
+        String findTenantSql = "SELECT TenantID FROM Lease WHERE AptNumber = ?";
+        try (PreparedStatement findTenantStmt = conn.prepareStatement(findTenantSql)) {
+            findTenantStmt.setInt(1, apartmentNumber);
+            ResultSet rs = findTenantStmt.executeQuery();
+            if (rs.next()) {
+                int tenantId = rs.getInt("TenantID");
+                addAmenityChargeToDues(tenantId, amenityId, false);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error charging tenant: " + e.getMessage());
+        }
+    }
+
+    public void addAmenityChargeToDues(int tenantId, int amenityId, boolean isCommonAmenity) {
+        // Determine which table to query based on amenity type
+        String amenityTable = isCommonAmenity ? "CommonAmenities" : "PrivateAmenities";
+
+        // SQL query to find the cost and name of the amenity
+        String findAmenityCostSql = "SELECT Cost, AmenityName FROM " + amenityTable + " WHERE AmenityID = ?";
+
+        // SQL query to add a charge to a tenant's dues with null PaymentDate
+        String insertPaymentSql = "INSERT INTO Payments (Amount, PaymentDate, PaymentMethod, TenantID) VALUES (?, NULL, 'Pending', ?)";
+        String insertPaymentBreakdownSql = "INSERT INTO PaymentBreakdown (PaymentID, Description, Amount) VALUES (?, ?, ?)";
+
+        try {
+            // Start a transaction
+            conn.setAutoCommit(false);
+
+            // Find the cost and name of the amenity
+            PreparedStatement pstmtFindCost = conn.prepareStatement(findAmenityCostSql);
+            pstmtFindCost.setInt(1, amenityId);
+            ResultSet rs = pstmtFindCost.executeQuery();
+            double amenityCost = 0;
+            String amenityName = "";
+            if (rs.next()) {
+                amenityCost = rs.getDouble("Cost");
+                amenityName = rs.getString("AmenityName");
+            }
+
+            // Insert a payment record with null PaymentDate
+            PreparedStatement pstmtPayment = conn.prepareStatement(insertPaymentSql, new String[]{"PaymentID"});
+            pstmtPayment.setDouble(1, amenityCost);
+            pstmtPayment.setInt(2, tenantId);
+            pstmtPayment.executeUpdate();
+
+            // Retrieve the generated PaymentID
+            ResultSet rsPayment = pstmtPayment.getGeneratedKeys();
+            int paymentId = 0;
+            if (rsPayment.next()) {
+                paymentId = rsPayment.getInt(1);
+            }
+
+            // Insert into PaymentBreakdown
+            if (paymentId != 0) {
+                PreparedStatement pstmtBreakdown = conn.prepareStatement(insertPaymentBreakdownSql);
+                pstmtBreakdown.setInt(1, paymentId);
+                pstmtBreakdown.setString(2, "Amenity Charge - " + amenityName);
+                pstmtBreakdown.setDouble(3, amenityCost);
+                pstmtBreakdown.executeUpdate();
+            }
+
+            // Commit the transaction
+            conn.commit();
+
+        } catch (SQLException e) {
+            try {
+                // Rollback in case of error
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error during rollback: " + ex.getMessage());
+            }
+            System.out.println("SQL Error: " + e.getMessage());
+        } finally {
+            try {
+                // Reset auto-commit to default
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
         }
     }
 

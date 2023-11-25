@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 
 public class Tenant implements TenantInterface{
     private Connection conn;
@@ -79,22 +81,184 @@ public class Tenant implements TenantInterface{
     }
 
     public void checkPaymentStatus() {
-        // Logic to check payment status
-        System.out.println("Checking payment status...");
-        // Example: Query the database to find the amount due for this tenant
+        // Query to get detailed payment breakdown
+        String paymentDetailsSql = 
+            "SELECT p.PaymentID, p.PaymentDate, p.PaymentMethod, pb.Description, pb.Amount " +
+            "FROM Payments p " +
+            "JOIN PaymentBreakdown pb ON p.PaymentID = pb.PaymentID " +
+            "WHERE p.TenantID = ? AND (p.PaymentDate IS NULL OR p.PaymentMethod = 'Pending') " +
+            "ORDER BY p.PaymentID";
+
+        try {
+            PreparedStatement pstmt = conn.prepareStatement(paymentDetailsSql);
+            pstmt.setInt(1, tenantId);
+            ResultSet rs = pstmt.executeQuery();
+
+            boolean hasPendingPayments = false;
+            System.out.println("Detailed Payment Status for Tenant ID: " + tenantId);
+            System.out.println("PaymentID | Amount | Payment Date | Payment Method | Description");
+            while (rs.next()) {
+                int paymentId = rs.getInt("PaymentID");
+                double amount = rs.getDouble("Amount");
+                Date paymentDate = rs.getDate("PaymentDate");
+                String paymentMethod = rs.getString("PaymentMethod");
+                String description = rs.getString("Description");
+
+                System.out.printf("%d | %s | %s | %s | %s\n", paymentId, amount, paymentDate, paymentMethod, description);
+                hasPendingPayments = true;
+            }
+
+            if (!hasPendingPayments) {
+                System.out.println("No pending payments for this tenant.");
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
+        }
     }
 
     public void makeRentalPayment() {
-        // Logic to make a rental payment
-        System.out.println("Making a rental payment...");
-        // Example: Insert a payment record into the database
+        // Prompt for payment date
+        System.out.print("Enter the payment date (YYYY-MM-DD): ");
+        java.sql.Date paymentDate = validateAndInputDate();
+
+        // Calculate total dues up to the entered date
+        double totalDueAmount = calculateTotalDuesUpToDate(tenantId, paymentDate);
+        System.out.println("Total due amount up to " + paymentDate + ": " + totalDueAmount);
+
+        // Prompt for payment amount
+        System.out.print("Enter the amount you want to pay: ");
+        double paymentAmount = scanner.nextDouble();
+        scanner.nextLine(); // consume the rest of the line
+
+        // Display payment methods and prompt for selection
+        System.out.println("Payment Methods: Credit/Debit, Cash, Check, Venmo, Zelle, Bank Transfer");
+        System.out.print("Enter your payment method: ");
+        String paymentMethod = scanner.nextLine();
+
+        // Apply the payment
+        applyPayment(tenantId, paymentAmount, paymentDate, paymentMethod);
+    }
+
+    private double calculateTotalDuesUpToDate(int tenantId, java.sql.Date upToDate) {
+        double totalDue = 0;
+        String dueSql = 
+            "SELECT SUM(pb.Amount) AS TotalDue " +
+            "FROM PaymentBreakdown pb JOIN Payments p ON pb.PaymentID = p.PaymentID " +
+            "WHERE p.TenantID = ? AND (p.PaymentDate IS NULL OR p.PaymentDate > ?)";
+
+        try {
+            PreparedStatement pstmtDue = conn.prepareStatement(dueSql);
+            pstmtDue.setInt(1, tenantId);
+            pstmtDue.setDate(2, upToDate);
+            ResultSet rsDue = pstmtDue.executeQuery();
+
+            if (rsDue.next()) {
+                totalDue = rsDue.getDouble("TotalDue");
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
+        }
+
+        return totalDue;
+    }
+
+    private void applyPayment(int tenantId, double amount, Date paymentDate, String paymentMethod) {
+        // This method applies the payment amount to the oldest dues first
+        String getOldestDueSql = 
+            "SELECT PaymentID, Amount FROM Payments " +
+            "WHERE TenantID = ? AND (PaymentDate IS NULL OR PaymentMethod = 'Pending') " +
+            "ORDER BY PaymentID ASC"; // Assuming PaymentID is sequential
+
+        try {
+            PreparedStatement pstmt = conn.prepareStatement(getOldestDueSql);
+            pstmt.setInt(1, tenantId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next() && amount > 0) {
+                int paymentId = rs.getInt("PaymentID");
+                double dueAmount = rs.getDouble("Amount");
+
+                // Determine the amount to be applied to this due
+                double amountToApply = Math.min(dueAmount, amount);
+
+                // Update the payment record
+                updatePaymentRecord(paymentId, amountToApply, paymentDate, paymentMethod);
+
+                // Subtract the applied amount from the total payment amount
+                amount -= amountToApply;
+            }
+
+            if (amount > 0) {
+                System.out.println("Excess amount paid: " + amount + ". Please contact the management for adjustment.");
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    private void updatePaymentRecord(int paymentId, double amount, Date paymentDate, String paymentMethod) {
+        // Update the payment record with the amount, date, and method
+        String updateSql = 
+            "UPDATE Payments SET Amount = Amount - ?, PaymentDate = ?, PaymentMethod = ? " +
+            "WHERE PaymentID = ? AND TenantID = ?";
+
+        try {
+            PreparedStatement pstmtUpdate = conn.prepareStatement(updateSql);
+            pstmtUpdate.setDouble(1, amount);
+            pstmtUpdate.setDate(2, paymentDate);
+            pstmtUpdate.setString(3, paymentMethod);
+            pstmtUpdate.setInt(4, paymentId);
+            pstmtUpdate.setInt(5, tenantId);
+
+            int rowsAffected = pstmtUpdate.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Payment of " + amount + " applied to Payment ID " + paymentId);
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
+        }
     }
 
     public void updatePersonalData() {
-        // Logic to update personal data
-        System.out.println("Updating personal data...");
-        // Example: Update tenant's personal information in the database
+        System.out.println("Enter Updated Tenant's Name:");
+        String tenantName = scanner.nextLine().trim();
+
+        System.out.println("Enter Updated Tenant's Email:");
+        String email = scanner.nextLine().trim();
+
+        System.out.println("Enter Updated Tenant's Phone Number:");
+        String phoneNumber = scanner.nextLine().trim();
+
+        String sql = "UPDATE Tenants SET TenantName = ?, Email = ?, PhoneNumber = ? WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, tenantName);
+            stmt.setString(2, email);
+            stmt.setString(3, phoneNumber);
+            stmt.setInt(4, tenantId);
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Tenant updated successfully.");
+            } else {
+                System.out.println("No Tenant found with the provided ID.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating tenant: " + e.getMessage());
+        }
     }
 
-    // Additional methods to interact with the database...
+    private java.sql.Date validateAndInputDate() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        dateFormat.setLenient(false);
+        java.sql.Date sqlDate = null;
+        while (sqlDate == null) {
+            String dateString = scanner.nextLine();
+            try {
+                java.util.Date parsedDate = dateFormat.parse(dateString);
+                sqlDate = new java.sql.Date(parsedDate.getTime()); // Convert to java.sql.Date
+            } catch (Exception e) {
+                System.out.println("Please use YYYY-MM-DD format.");
+            }
+        }
+        return sqlDate;
+    }
 }
