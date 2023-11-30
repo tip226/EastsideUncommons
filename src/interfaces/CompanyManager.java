@@ -613,8 +613,6 @@ public class CompanyManager implements CompanyManagerInterface {
                 if (rowsAffected > 0) {
                     System.out.println("Amenity assigned successfully to the property.");
                     
-                    // Automatically charge all tenants in the property
-                    chargeTenantsForPropertyAmenity(propertyId, amenityId);
                 } else {
                     System.out.println("Failed to assign the amenity.");
                 }
@@ -676,8 +674,6 @@ public class CompanyManager implements CompanyManagerInterface {
                 if (rowsAffected > 0) {
                     System.out.println(" Private amenity assigned successfully to the apartment.");
 
-                    // Automatically charge the tenant of the apartment
-                    chargeTenantForApartmentAmenity(apartmentNumber, privateAmenityId);
                 } else {
                     System.out.println("Failed to assign the amenity.");
                 }

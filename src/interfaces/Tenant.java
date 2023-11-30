@@ -7,16 +7,22 @@ import java.sql.SQLException;
 import java.util.Scanner;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Tenant implements TenantInterface{
     private Connection conn;
     private Scanner scanner;
     private int tenantId;
+    private java.sql.Date paymentDate;
 
     public Tenant(Connection conn) {
         this.conn = conn;
         this.scanner = new Scanner(System.in);
         this.tenantId = promptForTenantId();
+        if (this.tenantId != -1) {
+            promptForPaymentDate();
+        }
     }
 
     public int promptForTenantId() {
@@ -41,6 +47,11 @@ public class Tenant implements TenantInterface{
             System.out.println("Error fetching tenants: " + e.getMessage());
             return -1; // Indicates an error
         }
+    }
+
+    private void promptForPaymentDate() {
+        System.out.print("Enter the payment date (YYYY-MM-DD): ");
+        this.paymentDate = validateAndInputDate();
     }
 
     public void showMenu() {
@@ -81,6 +92,7 @@ public class Tenant implements TenantInterface{
     }
 
     public void checkPaymentStatus() {
+        chargeForAmenities();
         // Query to get detailed payment breakdown
         String paymentDetailsSql = 
             "SELECT p.PaymentID, p.PaymentDate, p.PaymentMethod, pb.Description, pb.Amount " +
@@ -113,6 +125,121 @@ public class Tenant implements TenantInterface{
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    // Method to charge tenant for all common amenities of their property
+    public void chargeForAmenities() {
+        int propertyId = getPropertyIdForTenant();
+
+        if (propertyId != -1) {
+            List<Integer> amenityIds = getAmenityIdsForProperty(propertyId);
+            for (int amenityId : amenityIds) {
+                addAmenityChargeToDues(amenityId, true);
+            }
+        } else {
+            System.out.println("No property found for tenant.");
+        }
+    }
+
+    private List<Integer> getAmenityIdsForProperty(int propertyId) {
+        List<Integer> amenityIds = new ArrayList<>();
+        String query = "SELECT AmenityID FROM Property_CommonAmenities WHERE PropertyID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, propertyId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                amenityIds.add(rs.getInt("AmenityID"));
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching Amenity IDs: " + e.getMessage());
+        }
+        return amenityIds;
+    }
+
+    private int getPropertyIdForTenant() {
+        String query = "SELECT p.PropertyID FROM Property p " +
+                       "JOIN Apartments a ON p.PropertyID = a.PropertyID_Ref " +
+                       "JOIN Lease l ON a.AptNumber = l.AptNumber " +
+                       "WHERE l.TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("PropertyID");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching Property ID: " + e.getMessage());
+        }
+        return -1; // Indicates an error or not found
+    }
+
+    public void addAmenityChargeToDues(int amenityId, boolean isCommonAmenity) {
+        // Determine which table to query based on amenity type
+        String amenityTable = isCommonAmenity ? "CommonAmenities" : "PrivateAmenities";
+
+        // SQL query to find the cost and name of the amenity
+        String findAmenityCostSql = "SELECT Cost, AmenityName FROM " + amenityTable + " WHERE AmenityID = ?";
+
+        // SQL query to add a charge to a tenant's dues with null PaymentDate
+        String insertPaymentSql = "INSERT INTO Payments (Amount, PaymentDate, PaymentMethod, TenantID) VALUES (?, NULL, 'Pending', ?)";
+        String insertPaymentBreakdownSql = "INSERT INTO PaymentBreakdown (PaymentID, Description, Amount) VALUES (?, ?, ?)";
+
+        try {
+            // Start a transaction
+            conn.setAutoCommit(false);
+
+            // Find the cost and name of the amenity
+            PreparedStatement pstmtFindCost = conn.prepareStatement(findAmenityCostSql);
+            pstmtFindCost.setInt(1, amenityId);
+            ResultSet rs = pstmtFindCost.executeQuery();
+            double amenityCost = 0;
+            String amenityName = "";
+            if (rs.next()) {
+                amenityCost = rs.getDouble("Cost");
+                amenityName = rs.getString("AmenityName");
+            }
+
+            // Insert a payment record with null PaymentDate
+            PreparedStatement pstmtPayment = conn.prepareStatement(insertPaymentSql, new String[]{"PaymentID"});
+            pstmtPayment.setDouble(1, amenityCost);
+            pstmtPayment.setInt(2, tenantId);
+            pstmtPayment.executeUpdate();
+
+            // Retrieve the generated PaymentID
+            ResultSet rsPayment = pstmtPayment.getGeneratedKeys();
+            int paymentId = 0;
+            if (rsPayment.next()) {
+                paymentId = rsPayment.getInt(1);
+            }
+
+            // Insert into PaymentBreakdown
+            if (paymentId != 0) {
+                PreparedStatement pstmtBreakdown = conn.prepareStatement(insertPaymentBreakdownSql);
+                pstmtBreakdown.setInt(1, paymentId);
+                pstmtBreakdown.setString(2, "Amenity Charge - " + amenityName);
+                pstmtBreakdown.setDouble(3, amenityCost);
+                pstmtBreakdown.executeUpdate();
+            }
+
+            // Commit the transaction
+            conn.commit();
+
+        } catch (SQLException e) {
+            try {
+                // Rollback in case of error
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.out.println("Error during rollback: " + ex.getMessage());
+            }
+            System.out.println("SQL Error: " + e.getMessage());
+        } finally {
+            try {
+                // Reset auto-commit to default
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                System.out.println("Error resetting auto-commit: " + e.getMessage());
+            }
         }
     }
 
