@@ -92,40 +92,96 @@ public class Tenant implements TenantInterface{
     }
 
     public void checkPaymentStatus() {
-        chargeForAmenities();
-        // Query to get detailed payment breakdown
-        String paymentDetailsSql = 
-            "SELECT p.PaymentID, p.PaymentDate, p.PaymentMethod, pb.Description, pb.Amount " +
-            "FROM Payments p " +
-            "JOIN PaymentBreakdown pb ON p.PaymentID = pb.PaymentID " +
-            "WHERE p.TenantID = ? AND (p.PaymentDate IS NULL OR p.PaymentMethod = 'Pending') " +
-            "ORDER BY p.PaymentID";
-
         try {
-            PreparedStatement pstmt = conn.prepareStatement(paymentDetailsSql);
-            pstmt.setInt(1, tenantId);
-            ResultSet rs = pstmt.executeQuery();
-
-            boolean hasPendingPayments = false;
-            System.out.println("Detailed Payment Status for Tenant ID: " + tenantId);
-            System.out.println("PaymentID | Amount | Payment Date | Payment Method | Description");
-            while (rs.next()) {
-                int paymentId = rs.getInt("PaymentID");
-                double amount = rs.getDouble("Amount");
-                Date paymentDate = rs.getDate("PaymentDate");
-                String paymentMethod = rs.getString("PaymentMethod");
-                String description = rs.getString("Description");
-
-                System.out.printf("%d | %s | %s | %s | %s\n", paymentId, amount, paymentDate, paymentMethod, description);
-                hasPendingPayments = true;
-            }
-
-            if (!hasPendingPayments) {
-                System.out.println("No pending payments for this tenant.");
+            // Check if payment is due for security deposit
+            if (isBeforeLeaseStartDate(this.paymentDate)) {
+                System.out.println("Payment due for security deposit.");
+                // Fetch and show security deposit details
+                showSecurityDepositDetails();
+            } else {
+                // Check for monthly rent and amenities
+                if (hasPaidForMonth(this.paymentDate)) {
+                    System.out.println("All payments for the month are up to date.");
+                } else {
+                    // Show breakdown for rent and amenities
+                    showMonthlyRentAndAmenities();
+                }
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
         }
+    }
+
+    private boolean isBeforeLeaseStartDate(java.sql.Date date) throws SQLException {
+        String sql = "SELECT LeaseStartDate FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                java.sql.Date leaseStartDate = rs.getDate("LeaseStartDate");
+                return date.before(leaseStartDate);
+            }
+        }
+        return false;
+    }
+
+    private boolean hasPaidForMonth(java.sql.Date date) throws SQLException {
+        String sql = "SELECT PaymentDate FROM Payments WHERE TenantID = ? " +
+                    "AND EXTRACT(MONTH FROM PaymentDate) = EXTRACT(MONTH FROM ?) " +
+                    "AND EXTRACT(YEAR FROM PaymentDate) = EXTRACT(YEAR FROM ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            stmt.setDate(2, date);
+            stmt.setDate(3, date);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    private void showSecurityDepositDetails() throws SQLException {
+        String sql = "SELECT SecurityDeposit FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                double securityDeposit = rs.getDouble("SecurityDeposit");
+                System.out.println("Security Deposit due: " + securityDeposit);
+            }
+        }
+    }
+
+    private void showMonthlyRentAndAmenities() throws SQLException {
+        // Show Monthly Rent
+        String rentSql = "SELECT MonthlyRent FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement rentStmt = conn.prepareStatement(rentSql)) {
+            rentStmt.setInt(1, tenantId);
+            ResultSet rentRs = rentStmt.executeQuery();
+            if (rentRs.next()) {
+                double monthlyRent = rentRs.getDouble("MonthlyRent");
+                System.out.println("Monthly Rent due: " + monthlyRent);
+            }
+        }
+
+        // Show Amenity Costs
+        int propertyId = getPropertyIdForTenant();
+        List<Integer> amenityIds = getAmenityIdsForProperty(propertyId);
+        double totalAmenityCost = 0;
+        for (int amenityId : amenityIds) {
+            totalAmenityCost += getAmenityCost(amenityId);
+        }
+        System.out.println("Total Amenity Cost: " + totalAmenityCost);
+    }
+
+    private double getAmenityCost(int amenityId) throws SQLException {
+        String sql = "SELECT Cost FROM CommonAmenities WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, amenityId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("Cost");
+            }
+        }
+        return 0;
     }
 
     // Method to charge tenant for all common amenities of their property

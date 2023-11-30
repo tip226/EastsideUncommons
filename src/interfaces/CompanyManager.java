@@ -23,7 +23,9 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.println("1: Manage Properties");
             System.out.println("2: Manage Apartments");
             System.out.println("3: Manage Amenities");
-            System.out.println("4: Exit");
+            System.out.println("4: Assign Common Amenity to Property");
+            System.out.println("5: Assign Private Amenity to Apartment");
+            System.out.println("6: Exit");
 
             System.out.print("Select an option: ");
             int option = scanner.nextInt();
@@ -40,6 +42,12 @@ public class CompanyManager implements CompanyManagerInterface {
                     manageAmenities();
                     break;
                 case 4:
+                    assignCommonAmenityToPropertyDirectly();
+                    break;
+                case 5:
+                    assignPrivateAmenityToApartment();
+                    break;
+                case 6:
                     System.out.println("Exiting Company Manager Interface.");
                     return;
                 default:
@@ -991,6 +999,23 @@ public class CompanyManager implements CompanyManagerInterface {
         } catch (SQLException e) {
             System.out.println("Error removing private amenity: " + e.getMessage());
         }
+    }
+
+    private void assignCommonAmenityToPropertyDirectly() {
+        // Display all properties
+        DBTablePrinter.printTable(conn, "Property");
+
+        System.out.print("Enter the Property ID to assign an amenity to: ");
+        int propertyId = scanner.nextInt();
+        scanner.nextLine(); // consume the rest of the line
+
+        if (!checkPropertyExists(propertyId)) {
+            System.out.println("No property found with the given ID.");
+            return;
+        }
+
+        // Assign the common amenity to the property
+        assignCommonAmenityToProperty(propertyId);
     }
 
     private boolean checkPropertyExists(int propertyId) {
