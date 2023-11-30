@@ -368,8 +368,8 @@ public class PropertyManager implements PropertyManagerInterface{
 
                 // Add security deposit to dues
                 double depositAmount = securityDeposit;
-                addSecurityDepositToDues(tenantID, depositAmount);
-                System.out.println("Security deposit added to tenant's dues.");
+                // addSecurityDepositToDues(tenantID, depositAmount);
+                // System.out.println("Security deposit added to tenant's dues.");
             }
         } catch (SQLException e) {
             System.out.println("Error adding lease: " + e.getMessage());

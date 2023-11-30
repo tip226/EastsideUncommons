@@ -680,7 +680,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
-                    System.out.println(" Private amenity assigned successfully to the apartment.");
+                    System.out.println("Private amenity assigned successfully to the apartment.");
 
                 } else {
                     System.out.println("Failed to assign the amenity.");

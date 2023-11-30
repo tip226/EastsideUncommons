@@ -93,22 +93,50 @@ public class Tenant implements TenantInterface{
 
     public void checkPaymentStatus() {
         try {
-            // Check if payment is due for security deposit
-            if (isBeforeLeaseStartDate(this.paymentDate)) {
+            if (isAfterLeaseEndDate(this.paymentDate)) {
+                System.out.println("Lease has ended.");
+                showSecurityDepositReturnStatus();
+            } else if (isBeforeLeaseStartDate(this.paymentDate)) {
                 System.out.println("Payment due for security deposit.");
-                // Fetch and show security deposit details
                 showSecurityDepositDetails();
+            } else if (hasPaidForMonth(this.paymentDate)) {
+                System.out.println("All payments for the month are up to date.");
             } else {
-                // Check for monthly rent and amenities
-                if (hasPaidForMonth(this.paymentDate)) {
-                    System.out.println("All payments for the month are up to date.");
-                } else {
-                    // Show breakdown for rent and amenities
-                    showMonthlyRentAndAmenities();
-                }
+                showMonthlyRentAndAmenities();
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    private boolean isAfterLeaseEndDate(java.sql.Date date) throws SQLException {
+        String sql = "SELECT LeaseEndDate FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                java.sql.Date leaseEndDate = rs.getDate("LeaseEndDate");
+                return !date.before(leaseEndDate);
+            }
+        }
+        return false;
+    }
+
+    private void showSecurityDepositReturnStatus() throws SQLException {
+        String sql = "SELECT SecurityDeposit, DamageAssessed FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String damageAssessed = rs.getString("DamageAssessed");
+                double securityDeposit = rs.getDouble("SecurityDeposit");
+
+                if ("Y".equals(damageAssessed)) {
+                    System.out.println("Security deposit not returned due to assessed damages.");
+                } else {
+                    System.out.println("Security deposit of " + securityDeposit + " will be returned.");
+                }
+            }
         }
     }
 
@@ -139,41 +167,91 @@ public class Tenant implements TenantInterface{
     }
 
     private void showSecurityDepositDetails() throws SQLException {
-        String sql = "SELECT SecurityDeposit FROM Lease WHERE TenantID = ?";
+        String sql = "SELECT SecurityDeposit, AptNumber FROM Lease WHERE TenantID = ?";
+        double totalSecurityDeposit = 0;
+        int apartmentNumber = 0;
+
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, tenantId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                double securityDeposit = rs.getDouble("SecurityDeposit");
-                System.out.println("Security Deposit due: " + securityDeposit);
+                totalSecurityDeposit = rs.getDouble("SecurityDeposit");
+                apartmentNumber = rs.getInt("AptNumber");
             }
         }
+
+        // Add one-time amenity costs to security deposit
+        totalSecurityDeposit += getOneTimeAmenityCosts(apartmentNumber);
+
+        System.out.println("Security Deposit due: " + totalSecurityDeposit);
+    }
+
+    private double getOneTimeAmenityCosts(int apartmentNumber) throws SQLException {
+        double oneTimeCosts = 0;
+        String sql = "SELECT Cost FROM PrivateAmenities pa " +
+                    "JOIN Apartment_PrivateAmenities apa ON pa.AmenityID = apa.PrivateAmenityID " +
+                    "WHERE apa.AptNumber = ? AND pa.CostType = 'One-time'";
+        
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, apartmentNumber);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                oneTimeCosts += rs.getDouble("Cost");
+            }
+        }
+        return oneTimeCosts;
     }
 
     private void showMonthlyRentAndAmenities() throws SQLException {
-        System.out.println("Breakdown of Charges:");
+        double totalDue = 0;
+        System.out.println("Breakdown of Monthly Charges:");
         System.out.println(String.format("%-30s %s", "Item", "Amount"));
         System.out.println("----------------------------------------");
-
-        double totalDue = 0;
 
         // Show Monthly Rent
         double monthlyRent = getMonthlyRent();
         System.out.println(String.format("%-30s %.2f", "Monthly Rent", monthlyRent));
         totalDue += monthlyRent;
 
-        // Show individual Amenity Costs
-        int propertyId = getPropertyIdForTenant();
-        List<Integer> amenityIds = getAmenityIdsForProperty(propertyId);
-        for (int amenityId : amenityIds) {
-            double amenityCost = getAmenityCost(amenityId);
-            String amenityName = getAmenityName(amenityId);
-            System.out.println(String.format("%-30s %.2f", amenityName, amenityCost));
-            totalDue += amenityCost;
-        }
+        // Show Common Amenity Costs
+        totalDue += showAmenityCosts("CommonAmenities", "Property_CommonAmenities", "PropertyID", getPropertyIdForTenant(), "AmenityID");
+
+        // Show Private Amenity Costs
+        totalDue += showAmenityCosts("PrivateAmenities", "Apartment_PrivateAmenities", "AptNumber", getApartmentNumberForTenant(), "PrivateAmenityID");
 
         System.out.println("----------------------------------------");
-        System.out.println(String.format("%-30s %.2f", "Total Due", totalDue));
+        System.out.println(String.format("%-30s %.2f", "Total Monthly Due", totalDue));
+    }
+
+    private double showAmenityCosts(String amenityTable, String junctionTable, String joinColumn, int id, String amenityColumn) throws SQLException {
+        double totalAmenityCost = 0;
+        String sql = "SELECT pa.Cost, pa.AmenityName FROM " + amenityTable + " pa " +
+                    "JOIN " + junctionTable + " jpa ON pa.AmenityID = jpa." + amenityColumn + " " +
+                    "WHERE jpa." + joinColumn + " = ? AND pa.CostType = 'Monthly'";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                String amenityName = rs.getString("AmenityName");
+                double cost = rs.getDouble("Cost");
+                System.out.println(String.format("%-30s %.2f", amenityName, cost));
+                totalAmenityCost += cost;
+            }
+        }
+        return totalAmenityCost;
+    }
+
+    private int getApartmentNumberForTenant() throws SQLException {
+        String sql = "SELECT AptNumber FROM Lease WHERE TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("AptNumber");
+            }
+        }
+        return -1; // Indicates no apartment number found for this tenant
     }
 
     private double getMonthlyRent() throws SQLException {
