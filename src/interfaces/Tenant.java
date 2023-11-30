@@ -151,25 +151,53 @@ public class Tenant implements TenantInterface{
     }
 
     private void showMonthlyRentAndAmenities() throws SQLException {
+        System.out.println("Breakdown of Charges:");
+        System.out.println(String.format("%-30s %s", "Item", "Amount"));
+        System.out.println("----------------------------------------");
+
+        double totalDue = 0;
+
         // Show Monthly Rent
+        double monthlyRent = getMonthlyRent();
+        System.out.println(String.format("%-30s %.2f", "Monthly Rent", monthlyRent));
+        totalDue += monthlyRent;
+
+        // Show individual Amenity Costs
+        int propertyId = getPropertyIdForTenant();
+        List<Integer> amenityIds = getAmenityIdsForProperty(propertyId);
+        for (int amenityId : amenityIds) {
+            double amenityCost = getAmenityCost(amenityId);
+            String amenityName = getAmenityName(amenityId);
+            System.out.println(String.format("%-30s %.2f", amenityName, amenityCost));
+            totalDue += amenityCost;
+        }
+
+        System.out.println("----------------------------------------");
+        System.out.println(String.format("%-30s %.2f", "Total Due", totalDue));
+    }
+
+    private double getMonthlyRent() throws SQLException {
         String rentSql = "SELECT MonthlyRent FROM Lease WHERE TenantID = ?";
         try (PreparedStatement rentStmt = conn.prepareStatement(rentSql)) {
             rentStmt.setInt(1, tenantId);
             ResultSet rentRs = rentStmt.executeQuery();
             if (rentRs.next()) {
-                double monthlyRent = rentRs.getDouble("MonthlyRent");
-                System.out.println("Monthly Rent due: " + monthlyRent);
+                return rentRs.getDouble("MonthlyRent");
             }
         }
+        return 0.0;
+    }
 
-        // Show Amenity Costs
-        int propertyId = getPropertyIdForTenant();
-        List<Integer> amenityIds = getAmenityIdsForProperty(propertyId);
-        double totalAmenityCost = 0;
-        for (int amenityId : amenityIds) {
-            totalAmenityCost += getAmenityCost(amenityId);
+    private String getAmenityName(int amenityId) throws SQLException {
+        String sql = "SELECT AmenityName FROM CommonAmenities WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, amenityId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("AmenityName");
+            }
         }
-        System.out.println("Total Amenity Cost: " + totalAmenityCost);
+        return "Unknown Amenity";
     }
 
     private double getAmenityCost(int amenityId) throws SQLException {
