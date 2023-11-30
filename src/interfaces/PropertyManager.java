@@ -28,9 +28,8 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("3: Record Move-Out");
             System.out.println("4: Add Person to Lease");
             System.out.println("5: Add Pet to Lease");
-            System.out.println("6: Set Move-Out Date");
-            System.out.println("7: Manage Tenants");
-            System.out.println("8: Exit");
+            System.out.println("6: Manage Tenants");
+            System.out.println("7: Exit");
 
             try {
                 System.out.print("Select an option: ");
@@ -44,7 +43,7 @@ public class PropertyManager implements PropertyManagerInterface{
                         recordLeaseData();
                         break;
                     case 3:
-                        recordMoveOut();
+                        setMoveOutDate();
                         break;
                     case 4:
                         addPersonToLease();
@@ -53,12 +52,9 @@ public class PropertyManager implements PropertyManagerInterface{
                         addPetToLease();
                         break;
                     case 6:
-                        setMoveOutDate();
-                        break;
-                    case 7:
                         manageTenantsMenu();
                         break;
-                    case 8:
+                    case 7:
                         System.out.println("Exiting Property Manager Interface.");
                         return;
                     default:

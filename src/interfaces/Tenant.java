@@ -180,23 +180,36 @@ public class Tenant implements TenantInterface{
             }
         }
 
-        // Add one-time amenity costs to security deposit
-        totalSecurityDeposit += getOneTimeAmenityCosts(apartmentNumber);
+        // Display breakdown
+        System.out.println("Breakdown of Security Deposit:");
+        System.out.println(String.format("%-30s %s", "Item", "Amount"));
+        System.out.println("----------------------------------------");
 
-        System.out.println("Security Deposit due: " + totalSecurityDeposit);
+        // Show base security deposit amount
+        System.out.println(String.format("%-30s %.2f", "Base Security Deposit", totalSecurityDeposit));
+
+        // Show one-time amenity costs and add them to the total security deposit
+        double oneTimeAmenityCosts = getOneTimeAmenityCosts(apartmentNumber);
+        totalSecurityDeposit += oneTimeAmenityCosts;
+
+        System.out.println("----------------------------------------");
+        System.out.println(String.format("%-30s %.2f", "Total Security Deposit Due", totalSecurityDeposit));
     }
 
     private double getOneTimeAmenityCosts(int apartmentNumber) throws SQLException {
         double oneTimeCosts = 0;
-        String sql = "SELECT Cost FROM PrivateAmenities pa " +
+        String sql = "SELECT Cost, AmenityName FROM PrivateAmenities pa " +
                     "JOIN Apartment_PrivateAmenities apa ON pa.AmenityID = apa.PrivateAmenityID " +
                     "WHERE apa.AptNumber = ? AND pa.CostType = 'One-time'";
-        
+
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, apartmentNumber);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                oneTimeCosts += rs.getDouble("Cost");
+                String amenityName = rs.getString("AmenityName");
+                double cost = rs.getDouble("Cost");
+                System.out.println(String.format("%-30s %.2f", amenityName, cost));
+                oneTimeCosts += cost;
             }
         }
         return oneTimeCosts;
