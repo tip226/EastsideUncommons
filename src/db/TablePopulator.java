@@ -370,40 +370,52 @@ public class TablePopulator {
         }
     }
 
-    public static void populateProspectiveTenantTable(Connection conn, String filePath) {
-        String sql = "INSERT INTO ProspectiveTenant (ProspectiveTenantID, Name, VisitDate, EligibilityInfo) VALUES (?, ?, ?, ?)";
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
+   public static void populateProspectiveTenantTable(Connection conn, String filePath) {
+    String sql = "INSERT INTO ProspectiveTenant (Name, Email, PhoneNumber, VisitDate, ApartmentVisited, EmploymentStatus, AnnualIncome, CreditScore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-            String line;
-            // Skip the header line
-            reader.readLine();
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            while ((line = reader.readLine()) != null) {
-                String[] tokens = line.split(", ");
+        String line;
+        // Skip the header line
+        reader.readLine();
 
-                int prospectiveTenantID = Integer.parseInt(tokens[0].trim());
-                String name = tokens[1].trim();
-                Date visitDate = Date.valueOf(tokens[2].trim());
-                String eligibilityInfo = tokens[3].trim();
+        while ((line = reader.readLine()) != null) {
+            String[] tokens = line.split(",\\s*");
 
-                stmt.setInt(1, prospectiveTenantID);
-                stmt.setString(2, name);
-                stmt.setDate(3, visitDate);
-                stmt.setString(4, eligibilityInfo);
+            // Assuming the file has data in the same order as the columns in the table
+            String name = tokens[0].trim();
+            String email = tokens[1].trim();
+            String phoneNumber = tokens[2].trim();
+            Date visitDate = Date.valueOf(tokens[3].trim()); // Ensure this is in YYYY-MM-DD format
+            int apartmentVisited = Integer.parseInt(tokens[4].trim());
+            String employmentStatus = tokens[5].trim();
+            double annualIncome = Double.parseDouble(tokens[6].trim());
+            int creditScore = Integer.parseInt(tokens[7].trim());
 
-                stmt.executeUpdate();
-            }
-            System.out.println("Data for ProspectiveTenant inserted successfully.");
-        } catch (IOException e) {
-            System.out.println("Failed to read from the file.");
-            e.printStackTrace();
-        } catch (SQLException e) {
-            System.out.println("Failed to insert data into Lease.");
-            e.printStackTrace();
+            stmt.setString(1, name);
+            stmt.setString(2, email);
+            stmt.setString(3, phoneNumber);
+            stmt.setDate(4, visitDate);
+            stmt.setInt(5, apartmentVisited);
+            stmt.setString(6, employmentStatus);
+            stmt.setDouble(7, annualIncome);
+            stmt.setInt(8, creditScore);
+
+            stmt.executeUpdate();
         }
+        System.out.println("Data for ProspectiveTenant inserted successfully.");
+    } catch (IOException e) {
+        System.out.println("Failed to read from the file.");
+        e.printStackTrace();
+    } catch (SQLException e) {
+        System.out.println("Failed to insert data into ProspectiveTenant.");
+        e.printStackTrace();
+    } catch (Exception e) {
+        System.out.println("An error occurred.");
+        e.printStackTrace();
     }
+}
     
     public static void populateFinancialReportTable(Connection conn, String filePath) {
         String sql = "INSERT INTO FinancialReport (ReportID, Year, Revenue, ManagerID) VALUES (?, ?, ?, ?)";

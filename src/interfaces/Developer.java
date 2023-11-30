@@ -61,6 +61,8 @@ public class Developer implements DeveloperInterface{
     }
 
     public void showPopulateMenu() {
+        int populateOption = 0;
+        String tableName = "";
         while (true) {
             System.out.println("Populate Data Menu");
             System.out.println("1: Populate Property Table");
@@ -78,14 +80,13 @@ public class Developer implements DeveloperInterface{
             System.out.println("13: Back to Main Menu");
 
             System.out.print("Select an option to populate data: ");
-            int populateOption = scanner.nextInt();
+            populateOption = scanner.nextInt();
             scanner.nextLine(); // consume the rest of the line
 
             if (populateOption == 13) {
                 return; // Return to main menu
             }
-
-            String tableName = "";
+           
             switch (populateOption) {
                 case 1:
                     tableName = "Property";
@@ -118,7 +119,7 @@ public class Developer implements DeveloperInterface{
                     promptAndPopulate("Lease");
                     break;
                 case 11:
-                    promptAndPopulate("ProspectiveTenant");
+                    tableName = "ProspectiveTenant";
                     break;
                 case 12:
                     promptAndPopulate("FinancialReport");
@@ -132,6 +133,7 @@ public class Developer implements DeveloperInterface{
             }
             promptAndPopulate(tableName);
         }
+        
     }
 
     public void promptAndPopulate(String tableName) {

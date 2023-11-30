@@ -630,21 +630,6 @@ public class CompanyManager implements CompanyManagerInterface {
         }
     }
 
-    private void chargeTenantsForPropertyAmenity(int propertyId, int amenityId) {
-        // SQL to find all tenants in the property and charge them
-        String findTenantsSql = "SELECT TenantID FROM Lease WHERE AptNumber IN (SELECT AptNumber FROM Apartments WHERE PropertyID_Ref = ?)";
-        try (PreparedStatement findTenantsStmt = conn.prepareStatement(findTenantsSql)) {
-            findTenantsStmt.setInt(1, propertyId);
-            ResultSet rs = findTenantsStmt.executeQuery();
-            while (rs.next()) {
-                int tenantId = rs.getInt("TenantID");
-                addAmenityChargeToDues(tenantId, amenityId, true);
-            }
-        } catch (SQLException e) {
-            System.out.println("Error charging tenants: " + e.getMessage());
-        }
-    }
-
     private void assignPrivateAmenityToApartment() {
         try {
             // Display available private amenities

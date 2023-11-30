@@ -9,6 +9,7 @@ import java.util.Scanner;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
+import java.sql.Statement;
 
 public class PropertyManager implements PropertyManagerInterface{
     private Connection conn;
@@ -31,40 +32,44 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("7: Manage Tenants");
             System.out.println("8: Exit");
 
-            System.out.print("Select an option: ");
-            int option = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
+            try {
+                System.out.print("Select an option: ");
+                int option = Integer.parseInt(scanner.nextLine()); // parse the input as integer
 
-            switch (option) {
-                case 1:
-                    recordVisitData();
-                    break;
-                case 2:
-                    recordLeaseData();
-                    break;
-                case 3:
-                    recordMoveOut();
-                    break;
-                case 4:
-                    addPersonToLease();
-                    break;
-                case 5:
-                    addPetToLease();
-                    break;
-                case 6:
-                    setMoveOutDate();
-                    break;
-                case 7:
-                    manageTenantsMenu();
-                    break;
-                case 8:
-                    System.out.println("Exiting Property Manager Interface.");
-                    return;
-                default:
-                    System.out.println("Invalid option selected. Please try again.");
-                    break;
+                switch (option) {
+                    case 1:
+                        recordVisitData();
+                        break;
+                    case 2:
+                        recordLeaseData();
+                        break;
+                    case 3:
+                        recordMoveOut();
+                        break;
+                    case 4:
+                        addPersonToLease();
+                        break;
+                    case 5:
+                        addPetToLease();
+                        break;
+                    case 6:
+                        setMoveOutDate();
+                        break;
+                    case 7:
+                        manageTenantsMenu();
+                        break;
+                    case 8:
+                        System.out.println("Exiting Property Manager Interface.");
+                        return;
+                    default:
+                        System.out.println("Invalid option selected. Please try again.");
+                        break;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a number.");
             }
         }
+            
     }
 
     private void manageTenantsMenu() {
@@ -75,25 +80,28 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("3: Remove Tenant");
             System.out.println("4: Return to Main Menu");
 
-            System.out.print("Select an option: ");
-            int option = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
+            try {
+                System.out.print("Select an option: ");
+                int option = Integer.parseInt(scanner.nextLine()); // parse the input as integer
 
-            switch (option) {
-                case 1:
-                    addTenant();
-                    break;
-                case 2:
-                    editTenant();
-                    break;
-                case 3:
-                    removeTenant();
-                    break;
-                case 4:
-                    return;
-                default:
-                    System.out.println("Invalid option selected. Please try again.");
-                    break;
+                switch (option) {
+                    case 1:
+                        addTenant();
+                        break;
+                    case 2:
+                        editTenant();
+                        break;
+                    case 3:
+                        removeTenant();
+                        break;
+                    case 4:
+                        return;
+                    default:
+                        System.out.println("Invalid option selected. Please try again.");
+                        break;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid input. Please enter a number.");
             }
         }
     }
@@ -305,54 +313,43 @@ public class PropertyManager implements PropertyManagerInterface{
     }
 
     public void recordLeaseData() {
-        System.out.println("Enter details for recording a lease");
+        try {
+            System.out.println("Enter details for recording a lease");
 
-        DBTablePrinter.printTable(conn, "Tenants");
-        int tenantID = validateTenantID();
+            DBTablePrinter.printTable(conn, "ProspectiveTenant");
+            int pTenantID = validateProspectiveTenantID();
 
-        DBTablePrinter.printTable(conn, "Apartments");
-        // Validate apartment ID
-        System.out.println("Enter Apartment ID for the visit:");
-        int aptNumber = 0;
-        boolean validApartmentId = false;
-        while (!validApartmentId) {
-            while (!scanner.hasNextInt()) {
-                System.out.println("Invalid input. Please enter a positive integer:");
-                scanner.next(); // clear the invalid input
+            // Transfer prospective tenant to Tenants table and get the new tenant ID
+           int tenantID = transferProspectiveTenantToTenant(pTenantID);
+
+            DBTablePrinter.printTable(conn, "Apartments");
+            int aptNumber = validateApartmentID();
+
+            System.out.println("Enter Lease Start Date (YYYY-MM-DD):");
+            java.sql.Date leaseStartDate = validateAndInputDate();
+
+            // Input and validate Lease End Date
+            java.sql.Date leaseEndDate = null;
+            while (leaseEndDate == null || leaseEndDate.before(leaseStartDate)) {
+                System.out.println("Enter Lease End Date (YYYY-MM-DD):");
+                leaseEndDate = validateAndInputDate();
+                if (leaseEndDate.before(leaseStartDate)) {
+                    System.out.println("Lease End Date must be after Lease Start Date.");
+                }
             }
-            aptNumber = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
 
-            if (aptNumber > 0 && checkApartmentExists(aptNumber)) {
-                validApartmentId = true;
-            } else {
-                System.out.println("No apartment found with the given ID. Please enter a valid Apartment ID.");
-            }
+            double monthlyRent = validateMoneyInput("Enter Monthly Rent: $");
+            double securityDeposit = validateMoneyInput("Enter Security Deposit: $");
+
+
+            insertLeaseData(tenantID, aptNumber, leaseStartDate, leaseEndDate, monthlyRent, securityDeposit);
+        } catch (SQLException e) {
+            System.out.println("Error in lease processing: " + e.getMessage());
         }
+    }
 
-        System.out.println("Enter Lease Start Date (YYYY-MM-DD):");
-        java.sql.Date leaseStartDate = validateAndInputDate();
-
-        // Input and validate Lease End Date
-        java.sql.Date leaseEndDate = null;
-        while (leaseEndDate == null || leaseEndDate.before(leaseStartDate)) {
-            System.out.println("Enter Lease End Date (YYYY-MM-DD):");
-            leaseEndDate = validateAndInputDate();
-            if (leaseEndDate.before(leaseStartDate)) {
-                System.out.println("Lease End Date must be after Lease Start Date.");
-            }
-        }
-
-        System.out.println("Enter Monthly Rent:");
-        double monthlyRent = scanner.nextDouble();
-
-        System.out.println("Enter Security Deposit:");
-        double securityDeposit = scanner.nextDouble();
-
-        System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
-        java.sql.Date moveOutDate = validateAndInputDate();
-
-        String sql = "INSERT INTO Lease (TenantID, AptNumber, LeaseStartDate, LeaseEndDate, MonthlyRent, SecurityDeposit, MoveOutDate) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    private void insertLeaseData(int tenantID, int aptNumber, java.sql.Date leaseStartDate, java.sql.Date leaseEndDate, double monthlyRent, double securityDeposit) throws SQLException {
+        String sql = "INSERT INTO Lease (TenantID, AptNumber, LeaseStartDate, LeaseEndDate, MonthlyRent, SecurityDeposit) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, tenantID);
             stmt.setInt(2, aptNumber);
@@ -360,95 +357,138 @@ public class PropertyManager implements PropertyManagerInterface{
             stmt.setDate(4, leaseEndDate);
             stmt.setDouble(5, monthlyRent);
             stmt.setDouble(6, securityDeposit);
-            stmt.setDate(7, moveOutDate);
-            stmt.executeUpdate();
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.println("Lease added successfully.");
-
-                // Add security deposit to dues
-                double depositAmount = securityDeposit;
-                // addSecurityDepositToDues(tenantID, depositAmount);
-                // System.out.println("Security deposit added to tenant's dues.");
             }
         } catch (SQLException e) {
             System.out.println("Error adding lease: " + e.getMessage());
         }
     }
 
-    public void addSecurityDepositToDues(int tenantId, double securityDeposit) {
-        // SQL query to add a security deposit charge to a tenant's dues
-        String sql = "INSERT INTO Payments (Amount, PaymentDate, PaymentMethod, TenantID) VALUES (?, ?, ?, ?)";
-        String paymentBreakdownSql = "INSERT INTO PaymentBreakdown (PaymentID, Description, Amount) VALUES (?, ?, ?)";
+    private int transferProspectiveTenantToTenant(int pTenantID) throws SQLException {
+        // Transfer data from ProspectiveTenant to Tenant
+        String transferSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) " +
+                            "SELECT Name, Email, PhoneNumber FROM ProspectiveTenant WHERE PTenantID = ?";
+        String deleteSql = "DELETE FROM ProspectiveTenant WHERE PTenantID = ?";
 
-        try {
-            // Start a transaction
-            conn.setAutoCommit(false);
-
-            // Insert a payment record
-            PreparedStatement pstmt = conn.prepareStatement(sql, new String[]{"PaymentID"});
-            pstmt.setDouble(1, securityDeposit);
-            pstmt.setDate(2, new java.sql.Date(System.currentTimeMillis())); // Use current date or a specific date
-            pstmt.setString(3, "Pending"); // Placeholder for the payment method
-            pstmt.setInt(4, tenantId);
-            pstmt.executeUpdate();
-
-            // Retrieve the generated PaymentID
-            ResultSet rs = pstmt.getGeneratedKeys();
-            int paymentId = 0;
+        // First, get the prospective tenant's details
+        String getDetailsSql = "SELECT Name, Email, PhoneNumber FROM ProspectiveTenant WHERE PTenantID = ?";
+        String tenantName = "", email = "", phoneNumber = "";
+        try (PreparedStatement detailsStmt = conn.prepareStatement(getDetailsSql)) {
+            detailsStmt.setInt(1, pTenantID);
+            ResultSet rs = detailsStmt.executeQuery();
             if (rs.next()) {
-                paymentId = rs.getInt(1);
+                tenantName = rs.getString("Name");
+                email = rs.getString("Email");
+                phoneNumber = rs.getString("PhoneNumber");
             }
+        }
 
-            // Insert into PaymentBreakdown
-            if (paymentId != 0) {
-                PreparedStatement pstmtBreakdown = conn.prepareStatement(paymentBreakdownSql);
-                pstmtBreakdown.setInt(1, paymentId);
-                pstmtBreakdown.setString(2, "Security Deposit");
-                pstmtBreakdown.setDouble(3, securityDeposit);
-                pstmtBreakdown.executeUpdate();
+        // Now insert into Tenants table
+        try (PreparedStatement transferStmt = conn.prepareStatement(transferSql)) {
+            transferStmt.setInt(1, pTenantID);
+            transferStmt.executeUpdate();
+        }
+
+        // Retrieve the new TenantID based on the unique data
+        int tenantID = -1;
+        String getNewTenantIDSql = "SELECT TenantID FROM Tenants WHERE TenantName = ? AND Email = ? AND PhoneNumber = ?";
+        try (PreparedStatement newTenantStmt = conn.prepareStatement(getNewTenantIDSql)) {
+            newTenantStmt.setString(1, tenantName);
+            newTenantStmt.setString(2, email);
+            newTenantStmt.setString(3, phoneNumber);
+            ResultSet rs = newTenantStmt.executeQuery();
+            if (rs.next()) {
+                tenantID = rs.getInt("TenantID");
             }
+        }
 
-            // Commit the transaction
-            conn.commit();
+        // Finally, delete the prospective tenant
+        try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+            deleteStmt.setInt(1, pTenantID);
+            deleteStmt.executeUpdate();
+        }
 
-        } catch (SQLException e) {
-            try {
-                // Rollback in case of error
-                conn.rollback();
-            } catch (SQLException ex) {
-                System.out.println("Error during rollback: " + ex.getMessage());
-            }
-            System.out.println("SQL Error: " + e.getMessage());
-        } finally {
-            try {
-                // Reset auto-commit to default
-                conn.setAutoCommit(true);
-            } catch (SQLException e) {
-                System.out.println("Error resetting auto-commit: " + e.getMessage());
+        return tenantID;
+    }
+
+    private int getTotalOccupants(int aptNumber) throws SQLException {
+        System.out.println("Enter the number of human tenants:");
+        int humanTenants = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.println("Enter the number of pets:");
+        int pets = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        int totalOccupants = humanTenants + pets;
+        checkCapacity(aptNumber, totalOccupants);
+        return totalOccupants;
+    }
+
+    private void checkCapacity(int aptNumber, int totalOccupants) throws SQLException {
+        String sql = "SELECT Bedrooms FROM Apartments WHERE AptNumber = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, aptNumber);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                int bedrooms = rs.getInt("Bedrooms");
+                if (totalOccupants > bedrooms) {
+                    throw new SQLException("Total number of occupants exceeds the number of bedrooms.");
+                }
             }
         }
     }
 
     public void setMoveOutDate() {
-        DBTablePrinter.printTable(conn, "Lease");
-        int leaseID = validateLeaseID();
+        try {
+            DBTablePrinter.printTable(conn, "Lease");
+            int leaseID = validateLeaseID();
 
-        System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
-        java.sql.Date moveOutDate = validateAndInputDate();
+            System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
+            java.sql.Date moveOutDate = validateAndInputDate();
 
-        String sql = "UPDATE Lease SET LeaseEndDate = ? WHERE LeaseID = ?";
+            // Ask about damages and update lease
+            handleDamageAssessmentAndUpdateLease(leaseID, moveOutDate);
+        } catch (SQLException e) {
+            System.out.println("Error in updating move-out details: " + e.getMessage());
+        }
+    }
+
+    private void handleDamageAssessmentAndUpdateLease(int leaseID, java.sql.Date moveOutDate) throws SQLException {
+        // Ask about damages
+        String damageResponse;
+        boolean damageAssessed = false;
+        do {
+            System.out.println("Were there any damages? (Y/N):");
+            damageResponse = scanner.nextLine().trim();
+            if ("Y".equalsIgnoreCase(damageResponse)) {
+                damageAssessed = true;
+                break;
+            } else if ("N".equalsIgnoreCase(damageResponse)) {
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter 'Y' for Yes or 'N' for No.");
+            }
+        } while (true);
+
+        // Update Lease table with move-out date and damage assessment
+        updateLeaseWithMoveOut(leaseID, moveOutDate, damageAssessed);
+    }
+
+    private void updateLeaseWithMoveOut(int leaseID, java.sql.Date moveOutDate, boolean damageAssessed) throws SQLException {
+        String sql = "UPDATE Lease SET MoveOutDate = ?, DamageAssessed = ? WHERE LeaseID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDate(1, moveOutDate);
-            stmt.setInt(2, leaseID);
+            stmt.setString(2, damageAssessed ? "Y" : "N");
+            stmt.setInt(3, leaseID);
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
                 System.out.println("Move-Out recorded successfully.");
             } else {
                 System.out.println("No lease found with the provided ID.");
             }
-        } catch (SQLException e) {
-            System.out.println("Error recording move-out: " + e.getMessage());
         }
     }
 
@@ -463,16 +503,12 @@ public class PropertyManager implements PropertyManagerInterface{
         DBTablePrinter.printTable(conn, "Tenants");
         int tenantID = validateTenantID();
 
-        String sql = "UPDATE Lease SET TenantID = ? WHERE LeaseID = ?";
+        String sql = "INSERT INTO LeaseTenants (LeaseID, TenantID) VALUES (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantID);
-            stmt.setInt(2, leaseID);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Person added to lease successfully.");
-            } else {
-                System.out.println("No lease found with the provided ID.");
-            }
+            stmt.setInt(1, leaseID);
+            stmt.setInt(2, tenantID);
+            stmt.executeUpdate();
+            System.out.println("Person added to lease successfully.");
         } catch (SQLException e) {
             System.out.println("Error adding person to lease: " + e.getMessage());
         }
@@ -500,30 +536,6 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("Pet added to lease successfully.");
         } catch (SQLException e) {
             System.out.println("Error adding pet to lease: " + e.getMessage());
-        }
-    }
-
-    public void recordMoveOut() {
-        DBTablePrinter.printTable(conn, "Lease");
-
-        // Validate and input the Lease ID
-        int leaseID = validateLeaseID();
-
-        System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
-        java.sql.Date moveOutDate = validateAndInputDate();
-
-        String sql = "UPDATE Lease SET MoveOutDate = ? WHERE LeaseID = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDate(1, moveOutDate);
-            stmt.setInt(2, leaseID);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Move-Out date recorded successfully.");
-            } else {
-                System.out.println("No lease found with the provided ID.");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error recording move-out date: " + e.getMessage());
         }
     }
 
@@ -581,6 +593,47 @@ public class PropertyManager implements PropertyManagerInterface{
         return sqlDate;
     }
 
+    private int validateApartmentID() {
+        int apartmentId = 0;
+        boolean validApartmentId = false;
+        while (!validApartmentId) {
+            System.out.print("Enter Apartment ID: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // Clear the invalid input
+            }
+            apartmentId = scanner.nextInt();
+            scanner.nextLine(); // Consume the rest of the line
+
+            if (apartmentId > 0 && checkApartmentExists(apartmentId)) {
+                validApartmentId = true;
+            } else {
+                System.out.println("No apartment found with the given ID. Please enter a valid Apartment ID.");
+            }
+        }
+        return apartmentId;
+    }
+
+    private double validateMoneyInput(String prompt) {
+        String input;
+        double value;
+        while (true) {
+            System.out.println(prompt);
+            input = scanner.nextLine().trim();
+            if (input.matches("\\d+(\\.\\d{1,2})?")) { // Updated regex here
+                try {
+                    value = Double.parseDouble(input);
+                    break;
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid input. Please enter a valid number.");
+                }
+            } else {
+                System.out.println("Please enter a valid amount with up to two decimal places.");
+            }
+        }
+        return value;
+    }
+
     private int validateTenantID() {
         int tenantID = 0;
         boolean validTenantId = false;
@@ -617,7 +670,7 @@ public class PropertyManager implements PropertyManagerInterface{
     }
 
     private int validateProspectiveTenantID() {
-        int prospectiveTenantID = 0;
+        int pTenantID = 0;
         boolean validProspectiveTenantId = false;
         while (!validProspectiveTenantId) {
             System.out.print("Enter Prospective Tenant ID: ");
@@ -625,22 +678,22 @@ public class PropertyManager implements PropertyManagerInterface{
                 System.out.println("Invalid input. Please enter a positive integer: ");
                 scanner.next(); // Clear the invalid input
             }
-            prospectiveTenantID = scanner.nextInt();
+            pTenantID = scanner.nextInt();
             scanner.nextLine(); // Consume the rest of the line
 
-            if (prospectiveTenantID > 0 && checkProspectiveTenantExists(prospectiveTenantID)) {
+            if (pTenantID > 0 && checkProspectiveTenantExists(pTenantID)) {
                 validProspectiveTenantId = true;
             } else {
                 System.out.println("No prospective tenant found with the given ID. Please enter a valid Prospective Tenant ID.");
             }
         }
-        return prospectiveTenantID;
+        return pTenantID;
     }
 
-    private boolean checkProspectiveTenantExists(int prospectiveTenantId) {
-        String sql = "SELECT COUNT(*) FROM ProspectiveTenant WHERE ProspectiveTenantID = ?";
+    private boolean checkProspectiveTenantExists(int pTenantID) {
+        String sql = "SELECT COUNT(*) FROM ProspectiveTenant WHERE PTenantID = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, prospectiveTenantId);
+            pstmt.setInt(1, pTenantID);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1) > 0;
