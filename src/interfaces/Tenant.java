@@ -99,23 +99,23 @@ public class Tenant implements TenantInterface{
             }
         }
     }
-public void checkPaymentStatus() {
-    try {
-        if (isAfterLeaseEndDate(this.paymentDate)) {
-            System.out.println("Lease has ended.");
-            showSecurityDepositReturnStatus(apartmentNumber);
-        } else if (isBeforeLeaseStartDate(this.paymentDate)) {
-            System.out.println("Payment due for security deposit.");
-            showSecurityDepositDetails();
-        } else if (hasPaidForMonth(this.paymentDate)) {
-            System.out.println("All payments for the month are up to date.");
-        } else {
-            showMonthlyRentAndAmenities();
+    public void checkPaymentStatus() {
+        try {
+            if (isAfterLeaseEndDate(this.paymentDate)) {
+                System.out.println("Lease has ended.");
+                showSecurityDepositReturnStatus(apartmentNumber);
+            } else if (isBeforeLeaseStartDate(this.paymentDate)) {
+                System.out.println("Payment due for security deposit.");
+                showSecurityDepositDetails();
+            } else if (hasPaidForMonth(this.paymentDate)) {
+                System.out.println("All payments for the month are up to date.");
+            } else {
+                showMonthlyRentAndAmenities();
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
         }
-    } catch (SQLException e) {
-        System.out.println("SQL Error: " + e.getMessage());
     }
-}
 
     private boolean isAfterLeaseEndDate(java.sql.Date date) throws SQLException {
         String sql = "SELECT LeaseEndDate FROM Lease WHERE AptNumber = ?";
@@ -338,21 +338,22 @@ public void checkPaymentStatus() {
     }
 
     private int getPropertyIdForTenant() {
-        String query = "SELECT p.PropertyID FROM Property p " +
-                       "JOIN Apartments a ON p.PropertyID = a.PropertyID_Ref " +
-                       "JOIN Lease l ON a.AptNumber = l.AptNumber " +
-                       "WHERE l.TenantID = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, tenantId);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("PropertyID");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error fetching Property ID: " + e.getMessage());
+    String query = "SELECT p.PropertyID FROM Property p " +
+                   "JOIN Apartments a ON p.PropertyID = a.PropertyID_Ref " +
+                   "JOIN Lease l ON a.AptNumber = l.AptNumber " +
+                   "JOIN LeaseTenants lt ON l.LeaseID = lt.LeaseID " +
+                   "WHERE lt.TenantID = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(query)) {
+        stmt.setInt(1, tenantId);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("PropertyID");
         }
-        return -1; // Indicates an error or not found
+    } catch (SQLException e) {
+        System.out.println("Error fetching Property ID: " + e.getMessage());
     }
+    return -1; // Indicates an error or not found
+}
 
     public void addAmenityChargeToDues(int amenityId, boolean isCommonAmenity) {
         // Determine which table to query based on amenity type

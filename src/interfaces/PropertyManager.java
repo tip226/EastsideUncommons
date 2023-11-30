@@ -47,9 +47,10 @@ public class PropertyManager implements PropertyManagerInterface{
                         setMoveOutDate();
                         break;
                     case 4:
-                        DBTablePrinter.printTable(conn, "Lease");
-                        leaseID = validateLeaseID();
-                        addPersonToLease(leaseID);
+                        // DBTablePrinter.printTable(conn, "Lease");
+                        // leaseID = validateLeaseID();
+                        // addPersonToLease(leaseID);
+                        addTenantToLease();
                         break;
                     case 5:
                         DBTablePrinter.printTable(conn, "Lease");
@@ -737,7 +738,64 @@ private boolean checkActiveLease(int aptNumber) throws SQLException {
         return false;
     }
 
+public void addTenantToLease() {
+    DBTablePrinter.printTable(conn, "Lease");
+    int leaseID = validateLeaseID();
+    try {
+        int aptNumber = getApartmentNumberForLease(leaseID);
+        if (aptNumber == -1) {
+            System.out.println("No apartment found for this lease.");
+            return;
+        }
 
+        int currentOccupants = getCurrentOccupantsCount(leaseID);
+        int maxOccupants = getMaxOccupants(aptNumber);
+
+        if (currentOccupants < maxOccupants) {
+            addPersonToLease(leaseID);
+        } else {
+            System.out.println("Cannot add more tenants. The apartment is at full capacity.");
+        }
+    } catch (SQLException e) {
+        System.out.println("Error: " + e.getMessage());
+    }
+}
+private int getApartmentNumberForLease(int leaseID) throws SQLException {
+    String sql = "SELECT AptNumber FROM Lease WHERE LeaseID = ?";
+    int aptNumber = -1;
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, leaseID);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            aptNumber = rs.getInt("AptNumber");
+        }
+    }
+    return aptNumber; // Returns the apartment number or -1 if not found
+}
+
+private int getCurrentOccupantsCount(int leaseID) throws SQLException {
+    String sql = "SELECT COUNT(*) as OccupantCount FROM LeaseTenants WHERE LeaseID = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, leaseID);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("OccupantCount");
+        }
+    }
+    return 0; // Default to 0 if no data is found
+}
+
+private int getMaxOccupants(int aptNumber) throws SQLException {
+    String sql = "SELECT Bedrooms FROM Apartments WHERE AptNumber = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, aptNumber);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt("Bedrooms");
+        }
+    }
+    return 0; // Default to 0 if no data is found
+}
     private String standardizeEmploymentStatus() {
         while (true) {
             System.out.print("Enter Employment Status (Employed, Student, Unemployed, Self-Employed, Retired, Other): ");
