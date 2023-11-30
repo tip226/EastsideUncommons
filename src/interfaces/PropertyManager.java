@@ -34,6 +34,7 @@ public class PropertyManager implements PropertyManagerInterface{
             try {
                 System.out.print("Select an option: ");
                 int option = Integer.parseInt(scanner.nextLine()); // parse the input as integer
+                int leaseID;
 
                 switch (option) {
                     case 1:
@@ -46,10 +47,14 @@ public class PropertyManager implements PropertyManagerInterface{
                         setMoveOutDate();
                         break;
                     case 4:
-                        addPersonToLease();
+                        DBTablePrinter.printTable(conn, "Lease");
+                        leaseID = validateLeaseID();
+                        addPersonToLease(leaseID);
                         break;
                     case 5:
-                        addPetToLease();
+                        DBTablePrinter.printTable(conn, "Lease");
+                        leaseID = validateLeaseID();
+                        addPetToLease(leaseID);
                         break;
                     case 6:
                         manageTenantsMenu();
@@ -63,6 +68,8 @@ public class PropertyManager implements PropertyManagerInterface{
                 }
             } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a number.");
+            } catch (SQLException e) {
+                System.out.println("SQL Error: " + e.getMessage());
             }
         }
             
@@ -103,6 +110,35 @@ public class PropertyManager implements PropertyManagerInterface{
     }
 
     private void addTenant() {
+        System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
+        String choice = scanner.nextLine().trim().toUpperCase();
+
+        try {
+            if ("P".equals(choice)) {
+                addTenantFromProspective();
+            } else if ("M".equals(choice)) {
+                addTenantManually();
+            } else {
+                System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
+            }
+        } catch (SQLException e) {
+            System.out.println("SQL Error: " + e.getMessage());
+        }
+    }
+
+    private void addTenantFromProspective() {
+        DBTablePrinter.printTable(conn, "ProspectiveTenant");
+        int pTenantID = validateProspectiveTenantID();
+
+        try {
+            // Transfer prospective tenant to Tenants table
+            transferProspectiveTenantToTenant(pTenantID);
+        } catch (SQLException e) {
+            System.out.println("Error transferring prospective tenant: " + e.getMessage());
+        }
+    }
+
+    private int addTenantManually() throws SQLException {
         // Validate name
         String name = "";
         System.out.println("Enter Tenant's Full Name (First and Last Name):");
@@ -114,38 +150,36 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("Invalid input. Please enter both first and last name:");
         }
 
-        // Validate email
-        String email = "";
         System.out.println("Enter Tenant's Email:");
-        while (true) {
-            email = scanner.nextLine().trim();
-            if (email.contains("@") && email.contains(".")) { // Basic email validation
-                break;
-            }
-            System.out.println("Invalid input. Please enter a valid email:");
+        String email = scanner.nextLine().trim();
+
+        System.out.println("Enter Tenant's Phone Number:");
+        String phoneNumber = scanner.nextLine().trim();
+
+        int tenantID = -1;
+        String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
+
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setString(1, name);
+            insertStmt.setString(2, email);
+            insertStmt.setString(3, phoneNumber);
+            insertStmt.executeUpdate();
         }
 
-        // Validate phone number
-        String phoneNumber = "";
-        System.out.println("Enter Tenant's Phone Number:");
-        while (true) {
-            phoneNumber = scanner.nextLine().trim();
-            if (phoneNumber.matches("\\d+")) { // Checks if the input is numeric
-                break;
+        // Retrieve the ID of the newly inserted tenant
+        String selectSql = "SELECT TenantID FROM Tenants WHERE TenantName = ? AND Email = ? AND PhoneNumber = ? ORDER BY TenantID DESC FETCH FIRST ROW ONLY";
+
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, name);
+            selectStmt.setString(2, email);
+            selectStmt.setString(3, phoneNumber);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                tenantID = rs.getInt("TenantID");
             }
-            System.out.println("Invalid input. Please enter a valid phone number:");
         }
-        
-        String sql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, name);
-            stmt.setString(2, email);
-            stmt.setString(3, phoneNumber);
-            stmt.executeUpdate();
-            System.out.println("Person added to tenant successfully.");
-        } catch (SQLException e) {
-            System.out.println("Error adding person to lease: " + e.getMessage());
-        }
+
+        return tenantID;
     }
 
     private void editTenant() {
@@ -312,14 +346,13 @@ public class PropertyManager implements PropertyManagerInterface{
         try {
             System.out.println("Enter details for recording a lease");
 
-            DBTablePrinter.printTable(conn, "ProspectiveTenant");
-            int pTenantID = validateProspectiveTenantID();
-
-            // Transfer prospective tenant to Tenants table and get the new tenant ID
-           int tenantID = transferProspectiveTenantToTenant(pTenantID);
-
             DBTablePrinter.printTable(conn, "Apartments");
             int aptNumber = validateApartmentID();
+
+            if (checkActiveLease(aptNumber)) {
+                System.out.println("This apartment already has an active lease.");
+                return;
+            }
 
             System.out.println("Enter Lease Start Date (YYYY-MM-DD):");
             java.sql.Date leaseStartDate = validateAndInputDate();
@@ -336,31 +369,77 @@ public class PropertyManager implements PropertyManagerInterface{
 
             double monthlyRent = validateMoneyInput("Enter Monthly Rent: $");
             double securityDeposit = validateMoneyInput("Enter Security Deposit: $");
+            
+            int totalOccupants = getTotalOccupants(aptNumber);
+            System.out.println("Total Occupants: " + totalOccupants);
 
+            int leaseID = insertLeaseData(aptNumber, leaseStartDate, leaseEndDate, monthlyRent, securityDeposit);
+            System.out.println("Lease ID: " + leaseID);
+            if (leaseID == -1) {
+                System.out.println("Error creating lease.");
+                return;
+            }
 
-            insertLeaseData(tenantID, aptNumber, leaseStartDate, leaseEndDate, monthlyRent, securityDeposit);
+            // Add additional tenants and pets
+            for (int i = 0; i < totalOccupants; i++) {
+                System.out.println("Add tenant (T) or pet (P)?");
+                String occupantType = scanner.nextLine().trim().toUpperCase();
+                if ("T".equals(occupantType)) {
+                    addPersonToLease(leaseID);
+                } else if ("P".equals(occupantType)) {
+                    addPetToLease(leaseID);
+                }
+            }
+
         } catch (SQLException e) {
             System.out.println("Error in lease processing: " + e.getMessage());
         }
     }
 
-    private void insertLeaseData(int tenantID, int aptNumber, java.sql.Date leaseStartDate, java.sql.Date leaseEndDate, double monthlyRent, double securityDeposit) throws SQLException {
-        String sql = "INSERT INTO Lease (TenantID, AptNumber, LeaseStartDate, LeaseEndDate, MonthlyRent, SecurityDeposit) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantID);
-            stmt.setInt(2, aptNumber);
-            stmt.setDate(3, leaseStartDate);
-            stmt.setDate(4, leaseEndDate);
-            stmt.setDouble(5, monthlyRent);
-            stmt.setDouble(6, securityDeposit);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Lease added successfully.");
+private int insertLeaseData(int aptNumber, java.sql.Date leaseStartDate, java.sql.Date leaseEndDate, double monthlyRent, double securityDeposit) {
+    int leaseID = -1;
+    try {
+        // Insert the new lease data
+        String insertSql = "INSERT INTO Lease (AptNumber, LeaseStartDate, LeaseEndDate, MonthlyRent, SecurityDeposit) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setInt(1, aptNumber);
+            insertStmt.setDate(2, leaseStartDate);
+            insertStmt.setDate(3, leaseEndDate);
+            insertStmt.setDouble(4, monthlyRent);
+            insertStmt.setDouble(5, securityDeposit);
+            insertStmt.executeUpdate();
+        }
+
+        // Retrieve the ID of the newly inserted lease
+        String selectSql = "SELECT LeaseID FROM Lease WHERE AptNumber = ? AND LeaseStartDate = ? AND LeaseEndDate = ? ORDER BY LeaseID DESC FETCH FIRST ROW ONLY";
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setInt(1, aptNumber);
+            selectStmt.setDate(2, leaseStartDate);
+            selectStmt.setDate(3, leaseEndDate);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                leaseID = rs.getInt("LeaseID");
             }
-        } catch (SQLException e) {
-            System.out.println("Error adding lease: " + e.getMessage());
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Error in insertLeaseData: " + e.getMessage());
+        e.printStackTrace();
+    }
+    return leaseID;
+}
+
+private boolean checkActiveLease(int aptNumber) throws SQLException {
+    String sql = "SELECT COUNT(*) FROM Lease WHERE AptNumber = ? AND LeaseEndDate > CURRENT_DATE";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, aptNumber);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1) > 0;
         }
     }
+    return false;
+}
 
     private int transferProspectiveTenantToTenant(int pTenantID) throws SQLException {
         // Transfer data from ProspectiveTenant to Tenant
@@ -410,16 +489,27 @@ public class PropertyManager implements PropertyManagerInterface{
     }
 
     private int getTotalOccupants(int aptNumber) throws SQLException {
-        System.out.println("Enter the number of human tenants:");
-        int humanTenants = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int totalOccupants = 0;
+        while (totalOccupants < 1) {
+            System.out.println("Enter the number of tenants (including pets):");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer:");
+                scanner.next(); // Clear the invalid input
+            }
+            totalOccupants = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
 
-        System.out.println("Enter the number of pets:");
-        int pets = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
-
-        int totalOccupants = humanTenants + pets;
-        checkCapacity(aptNumber, totalOccupants);
+            if (totalOccupants < 1) {
+                System.out.println("You must have at least one occupant.");
+            } else {
+                try {
+                    checkCapacity(aptNumber, totalOccupants);
+                } catch (SQLException e) {
+                    System.out.println("Capacity check failed: " + e.getMessage());
+                    totalOccupants = 0; // Reset to force re-entry
+                }
+            }
+        }
         return totalOccupants;
     }
 
@@ -488,29 +578,79 @@ public class PropertyManager implements PropertyManagerInterface{
         }
     }
 
-    public void addPersonToLease() {
-        System.out.println("Enter details to add a person to a lease");
+    public void addPersonToLease(int leaseID) throws SQLException {
 
-        // Validate and input the Lease ID
-        DBTablePrinter.printTable(conn, "Lease");
-        int leaseID = validateLeaseID();
+        System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
+        String choice = scanner.nextLine().trim().toUpperCase();
 
-        // Validate and input the Tenant ID to be added
-        DBTablePrinter.printTable(conn, "Tenants");
-        int tenantID = validateTenantID();
+        int tenantID;
+        if ("P".equals(choice)) {
+            tenantID = selectProspectiveTenant();
+        } else if ("M".equals(choice)) {
+            tenantID = addTenantManually();
+        } else {
+            System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
+            return;
+        }
 
         String sql = "INSERT INTO LeaseTenants (LeaseID, TenantID) VALUES (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, leaseID);
             stmt.setInt(2, tenantID);
             stmt.executeUpdate();
-            System.out.println("Person added to lease successfully.");
-        } catch (SQLException e) {
-            System.out.println("Error adding person to lease: " + e.getMessage());
+            System.out.println("Tenant added to lease successfully.");
         }
     }
 
-    public void addPetToLease() {
+    private int selectProspectiveTenant() throws SQLException {
+        DBTablePrinter.printTable(conn, "ProspectiveTenant");
+        int pTenantID = validateProspectiveTenantID();
+
+        int tenantID = -1;
+        String getDetailsSql = "SELECT Name, Email, PhoneNumber FROM ProspectiveTenant WHERE PTenantID = ?";
+        String name = "", email = "", phoneNumber = "";
+
+        try (PreparedStatement detailsStmt = conn.prepareStatement(getDetailsSql)) {
+            detailsStmt.setInt(1, pTenantID);
+            ResultSet rs = detailsStmt.executeQuery();
+            if (rs.next()) {
+                name = rs.getString("Name");
+                email = rs.getString("Email");
+                phoneNumber = rs.getString("PhoneNumber");
+            }
+        }
+
+        String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setString(1, name);
+            insertStmt.setString(2, email);
+            insertStmt.setString(3, phoneNumber);
+            insertStmt.executeUpdate();
+        }
+
+        // Retrieve the ID of the newly inserted tenant
+        String selectSql = "SELECT TenantID FROM Tenants WHERE TenantName = ? AND Email = ? AND PhoneNumber = ? ORDER BY TenantID DESC FETCH FIRST ROW ONLY";
+
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, name);
+            selectStmt.setString(2, email);
+            selectStmt.setString(3, phoneNumber);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                tenantID = rs.getInt("TenantID");
+            }
+        }
+
+        String deleteSql = "DELETE FROM ProspectiveTenant WHERE PTenantID = ?";
+        try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+            deleteStmt.setInt(1, pTenantID);
+            deleteStmt.executeUpdate();
+        }
+
+        return tenantID;
+    }
+
+    public void addPetToLease(int leaseID) throws SQLException {
         System.out.println("Enter details to add a pet to a lease");
 
         System.out.println("Enter Pet's Name:");
@@ -519,19 +659,67 @@ public class PropertyManager implements PropertyManagerInterface{
         System.out.println("Enter Pet Type:");
         String petType = scanner.nextLine().trim();
 
-        // Validate and input the Tenant ID to associate the pet
-        DBTablePrinter.printTable(conn, "Tenants");
-        int tenantID = validateTenantID();
+        int tenantID;
+        while (true) {
+            // Display tenants in the current lease
+            printTenantsInLease(leaseID);
 
-        String sql = "INSERT INTO Pets (PetName, PetType, TenantID) VALUES (?, ?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, petName);
-            stmt.setString(2, petType);
-            stmt.setInt(3, tenantID);
-            stmt.executeUpdate();
-            System.out.println("Pet added to lease successfully.");
+            // Validate and input the Tenant ID to associate the pet
+            System.out.println("Enter Tenant ID to associate with the pet:");
+            tenantID = validateTenantID();
+
+            try {
+                if (isTenantInLease(leaseID, tenantID)) {
+                    break;
+                } else {
+                    System.out.println("The selected tenant is not part of the lease. Please try again.");
+                }
+            } catch (SQLException e) {
+                System.out.println("Error validating tenant in lease: " + e.getMessage());
+                return;
+            }
+        }
+
+        try {
+            String sql = "INSERT INTO Pets (PetName, PetType, TenantID) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, petName);
+                stmt.setString(2, petType);
+                stmt.setInt(3, tenantID);
+                stmt.executeUpdate();
+                System.out.println("Pet added to lease successfully.");
+            }
         } catch (SQLException e) {
-            System.out.println("Error adding pet to lease: " + e.getMessage());
+            System.out.println("Error while adding pet to lease: " + e.getMessage());
+        }
+    }
+
+    private void printTenantsInLease(int leaseID) {
+        String sql = "SELECT t.TenantID, t.TenantName FROM Tenants t " +
+                    "JOIN LeaseTenants lt ON t.TenantID = lt.TenantID " +
+                    "WHERE lt.LeaseID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            ResultSet rs = stmt.executeQuery();
+            System.out.println("Tenants in Lease ID " + leaseID + ":");
+            System.out.println("TenantID\tTenantName");
+            while (rs.next()) {
+                int tenantId = rs.getInt("TenantID");
+                String tenantName = rs.getString("TenantName");
+                System.out.println(tenantId + "\t\t" + tenantName);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error displaying tenants in lease: " + e.getMessage());
+        }
+    }
+
+    private boolean isTenantInLease(int leaseID, int tenantID) throws SQLException {
+        String sql = "SELECT * FROM LeaseTenants WHERE LeaseID = ? AND TenantID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            stmt.setInt(2, tenantID);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next(); // Returns true if the tenant is part of the lease
         }
     }
 

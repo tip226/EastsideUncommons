@@ -15,6 +15,7 @@ public class Tenant implements TenantInterface{
     private Scanner scanner;
     private int tenantId;
     private java.sql.Date paymentDate;
+    private int apartmentNumber;
 
     public Tenant(Connection conn) {
         this.conn = conn;
@@ -22,6 +23,14 @@ public class Tenant implements TenantInterface{
         this.tenantId = promptForTenantId();
         if (this.tenantId != -1) {
             promptForPaymentDate();
+        }
+        try {
+            this.apartmentNumber = getApartmentNumberForTenant();
+            System.out.println("Apartment Number: " + this.apartmentNumber);
+        } catch (SQLException e) {
+            System.out.println("Error retrieving apartment number: " + e.getMessage());
+            // Handle the exception (e.g., set default value, log error, etc.)
+            this.apartmentNumber = -1; // Example default value
         }
     }
 
@@ -90,29 +99,28 @@ public class Tenant implements TenantInterface{
             }
         }
     }
-
-    public void checkPaymentStatus() {
-        try {
-            if (isAfterLeaseEndDate(this.paymentDate)) {
-                System.out.println("Lease has ended.");
-                showSecurityDepositReturnStatus();
-            } else if (isBeforeLeaseStartDate(this.paymentDate)) {
-                System.out.println("Payment due for security deposit.");
-                showSecurityDepositDetails();
-            } else if (hasPaidForMonth(this.paymentDate)) {
-                System.out.println("All payments for the month are up to date.");
-            } else {
-                showMonthlyRentAndAmenities();
-            }
-        } catch (SQLException e) {
-            System.out.println("SQL Error: " + e.getMessage());
+public void checkPaymentStatus() {
+    try {
+        if (isAfterLeaseEndDate(this.paymentDate)) {
+            System.out.println("Lease has ended.");
+            showSecurityDepositReturnStatus(apartmentNumber);
+        } else if (isBeforeLeaseStartDate(this.paymentDate)) {
+            System.out.println("Payment due for security deposit.");
+            showSecurityDepositDetails();
+        } else if (hasPaidForMonth(this.paymentDate)) {
+            System.out.println("All payments for the month are up to date.");
+        } else {
+            showMonthlyRentAndAmenities();
         }
+    } catch (SQLException e) {
+        System.out.println("SQL Error: " + e.getMessage());
     }
+}
 
     private boolean isAfterLeaseEndDate(java.sql.Date date) throws SQLException {
-        String sql = "SELECT LeaseEndDate FROM Lease WHERE TenantID = ?";
+        String sql = "SELECT LeaseEndDate FROM Lease WHERE AptNumber = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantId);
+            stmt.setInt(1, apartmentNumber);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 java.sql.Date leaseEndDate = rs.getDate("LeaseEndDate");
@@ -122,28 +130,27 @@ public class Tenant implements TenantInterface{
         return false;
     }
 
-    private void showSecurityDepositReturnStatus() throws SQLException {
-        String sql = "SELECT SecurityDeposit, DamageAssessed FROM Lease WHERE TenantID = ?";
+    private void showSecurityDepositReturnStatus(int apartmentNumber) throws SQLException {
+        String sql = "SELECT SecurityDeposit, DamageAssessed FROM Lease WHERE AptNumber = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantId);
+            stmt.setInt(1, apartmentNumber);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                String damageAssessed = rs.getString("DamageAssessed");
                 double securityDeposit = rs.getDouble("SecurityDeposit");
-
+                String damageAssessed = rs.getString("DamageAssessed");
                 if ("Y".equals(damageAssessed)) {
-                    System.out.println("Security deposit not returned due to assessed damages.");
+                    System.out.println("Security deposit of $" + securityDeposit + " will not be returned due to assessed damages.");
                 } else {
-                    System.out.println("Security deposit of " + securityDeposit + " will be returned.");
+                    System.out.println("Security deposit of $" + securityDeposit + " will be returned.");
                 }
             }
         }
     }
 
     private boolean isBeforeLeaseStartDate(java.sql.Date date) throws SQLException {
-        String sql = "SELECT LeaseStartDate FROM Lease WHERE TenantID = ?";
+        String sql = "SELECT LeaseStartDate FROM Lease WHERE AptNumber = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantId);
+            stmt.setInt(1, apartmentNumber);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 java.sql.Date leaseStartDate = rs.getDate("LeaseStartDate");
@@ -167,16 +174,14 @@ public class Tenant implements TenantInterface{
     }
 
     private void showSecurityDepositDetails() throws SQLException {
-        String sql = "SELECT SecurityDeposit, AptNumber FROM Lease WHERE TenantID = ?";
+        String sql = "SELECT SecurityDeposit, AptNumber FROM Lease WHERE AptNumber = ?";
         double totalSecurityDeposit = 0;
-        int apartmentNumber = 0;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantId);
+            stmt.setInt(1, apartmentNumber);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 totalSecurityDeposit = rs.getDouble("SecurityDeposit");
-                apartmentNumber = rs.getInt("AptNumber");
             }
         }
 
@@ -256,7 +261,7 @@ public class Tenant implements TenantInterface{
     }
 
     private int getApartmentNumberForTenant() throws SQLException {
-        String sql = "SELECT AptNumber FROM Lease WHERE TenantID = ?";
+        String sql = "SELECT AptNumber FROM Lease WHERE LeaseID IN (SELECT LeaseID FROM LeaseTenants WHERE TenantID = ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, tenantId);
             ResultSet rs = stmt.executeQuery();
@@ -268,9 +273,9 @@ public class Tenant implements TenantInterface{
     }
 
     private double getMonthlyRent() throws SQLException {
-        String rentSql = "SELECT MonthlyRent FROM Lease WHERE TenantID = ?";
+        String rentSql = "SELECT MonthlyRent FROM Lease WHERE AptNumber = ?";
         try (PreparedStatement rentStmt = conn.prepareStatement(rentSql)) {
-            rentStmt.setInt(1, tenantId);
+            rentStmt.setInt(1, apartmentNumber);
             ResultSet rentRs = rentStmt.executeQuery();
             if (rentRs.next()) {
                 return rentRs.getDouble("MonthlyRent");
