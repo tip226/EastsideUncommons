@@ -1,5 +1,7 @@
 package interfaces;
 
+import db.DBTablePrinter;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -74,7 +76,9 @@ public class Tenant implements TenantInterface{
             System.out.println("1: Check Payment Status");
             System.out.println("2: Make a Rental Payment");
             System.out.println("3: Update Personal Data");
-            System.out.println("4: Exit");
+            System.out.println("4: Add Tenant to Lease");
+            System.out.println("5: Add Pet to Tenant");
+            System.out.println("6: Exit");
 
             System.out.print("Select an option: ");
             int option = scanner.nextInt();
@@ -91,6 +95,12 @@ public class Tenant implements TenantInterface{
                     updatePersonalData();
                     break;
                 case 4:
+                    addTenantToLease();
+                    break;
+                case 5:
+                    addPetToLease();
+                    break;
+                case 6:
                     System.out.println("Exiting Tenant Interface.");
                     return;
                 default:
@@ -552,6 +562,288 @@ public class Tenant implements TenantInterface{
         } catch (SQLException e) {
             System.out.println("Error updating tenant: " + e.getMessage());
         }
+    }
+
+    public void addTenantToLease() {
+    try {
+        int leaseID = getLeaseIDForTenant();
+        int aptNumber = getApartmentNumberForLease(leaseID);
+
+        int currentOccupants = getCurrentOccupantsCount(leaseID);
+        int maxOccupants = getMaxOccupants(aptNumber);
+
+        if (currentOccupants < maxOccupants) {
+            addPersonToLease(leaseID); // Method to add a person to the lease
+        } else {
+            System.out.println("Cannot add more tenants. The apartment is at full capacity.");
+        }
+    } catch (SQLException e) {
+        System.out.println("Error: " + e.getMessage());
+    }
+}
+
+ public void addPersonToLease(int leaseID) throws SQLException {
+
+        System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
+        String choice = scanner.nextLine().trim().toUpperCase();
+
+        int tenantID;
+        if ("P".equals(choice)) {
+            tenantID = selectProspectiveTenant();
+        } else if ("M".equals(choice)) {
+            tenantID = addTenantManually();
+        } else {
+            System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
+            return;
+        }
+
+        String sql = "INSERT INTO LeaseTenants (LeaseID, TenantID) VALUES (?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            stmt.setInt(2, tenantID);
+            stmt.executeUpdate();
+            System.out.println("Tenant added to lease successfully.");
+        }
+    }
+
+        private int selectProspectiveTenant() throws SQLException {
+        DBTablePrinter.printTable(conn, "ProspectiveTenant");
+        int pTenantID = validateProspectiveTenantID();
+
+        int tenantID = -1;
+        String getDetailsSql = "SELECT Name, Email, PhoneNumber FROM ProspectiveTenant WHERE PTenantID = ?";
+        String name = "", email = "", phoneNumber = "";
+
+        try (PreparedStatement detailsStmt = conn.prepareStatement(getDetailsSql)) {
+            detailsStmt.setInt(1, pTenantID);
+            ResultSet rs = detailsStmt.executeQuery();
+            if (rs.next()) {
+                name = rs.getString("Name");
+                email = rs.getString("Email");
+                phoneNumber = rs.getString("PhoneNumber");
+            }
+        }
+
+        String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setString(1, name);
+            insertStmt.setString(2, email);
+            insertStmt.setString(3, phoneNumber);
+            insertStmt.executeUpdate();
+        }
+
+        // Retrieve the ID of the newly inserted tenant
+        String selectSql = "SELECT TenantID FROM Tenants WHERE TenantName = ? AND Email = ? AND PhoneNumber = ? ORDER BY TenantID DESC FETCH FIRST ROW ONLY";
+
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, name);
+            selectStmt.setString(2, email);
+            selectStmt.setString(3, phoneNumber);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                tenantID = rs.getInt("TenantID");
+            }
+        }
+
+        String deleteSql = "DELETE FROM ProspectiveTenant WHERE PTenantID = ?";
+        try (PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+            deleteStmt.setInt(1, pTenantID);
+            deleteStmt.executeUpdate();
+        }
+
+        return tenantID;
+    }
+
+        private int addTenantManually() throws SQLException {
+        // Validate name
+        String name = "";
+        System.out.println("Enter Tenant's Full Name (First and Last Name):");
+        while (true) {
+            name = scanner.nextLine().trim();
+            if (name.split("\\s+").length >= 2) { // Checks if there are at least two words
+                break;
+            }
+            System.out.println("Invalid input. Please enter both first and last name:");
+        }
+
+        System.out.println("Enter Tenant's Email:");
+        String email = scanner.nextLine().trim();
+
+        System.out.println("Enter Tenant's Phone Number:");
+        String phoneNumber = scanner.nextLine().trim();
+
+        int tenantID = -1;
+        String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
+
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setString(1, name);
+            insertStmt.setString(2, email);
+            insertStmt.setString(3, phoneNumber);
+            insertStmt.executeUpdate();
+        }
+
+        // Retrieve the ID of the newly inserted tenant
+        String selectSql = "SELECT TenantID FROM Tenants WHERE TenantName = ? AND Email = ? AND PhoneNumber = ? ORDER BY TenantID DESC FETCH FIRST ROW ONLY";
+
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, name);
+            selectStmt.setString(2, email);
+            selectStmt.setString(3, phoneNumber);
+            ResultSet rs = selectStmt.executeQuery();
+            if (rs.next()) {
+                tenantID = rs.getInt("TenantID");
+            }
+        }
+
+        return tenantID;
+    }
+
+    public int getApartmentNumberForLease(int leaseID) throws SQLException {
+        String sql = "SELECT AptNumber FROM Lease WHERE LeaseID = ?";
+        int aptNumber = -1;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                aptNumber = rs.getInt("AptNumber");
+            }
+        }
+        return aptNumber; // Returns the apartment number or -1 if not found
+    }
+
+    public int getCurrentOccupantsCount(int leaseID) throws SQLException {
+        String sql = "SELECT COUNT(*) as OccupantCount FROM LeaseTenants WHERE LeaseID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("OccupantCount");
+            }
+        }
+        return 0; // Default to 0 if no data is found
+    }
+
+    public int getMaxOccupants(int aptNumber) throws SQLException {
+        String sql = "SELECT Bedrooms FROM Apartments WHERE AptNumber = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, aptNumber);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("Bedrooms");
+            }
+        }
+        return 0; // Default to 0 if no data is found
+    }
+
+private int getLeaseIDForTenant() throws SQLException {
+    String sql = "SELECT LeaseID FROM LeaseTenants WHERE TenantID = ?";
+    int leaseID = -1;
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, tenantId);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            leaseID = rs.getInt("LeaseID");
+        }
+    } catch (SQLException e) {
+        System.out.println("Error fetching Lease ID: " + e.getMessage());
+    }
+    return leaseID;
+}
+public void addPetToLease() {
+    try {
+        int leaseID = getLeaseIDForTenant();
+        if (leaseID == -1) {
+            System.out.println("Lease ID not found for the tenant.");
+            return;
+        }
+
+        System.out.println("Enter Pet's Name:");
+        String petName = scanner.nextLine().trim();
+
+        System.out.println("Enter Pet Type:");
+        String petType = scanner.nextLine().trim();
+
+        String sql = "INSERT INTO Pets (PetName, PetType, TenantID) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, petName);
+            stmt.setString(2, petType);
+            stmt.setInt(3, tenantId);
+            stmt.executeUpdate();
+            System.out.println("Pet added to lease successfully.");
+        }
+    } catch (SQLException e) {
+        System.out.println("Error adding pet to lease: " + e.getMessage());
+    }
+}
+
+private int validateProspectiveTenantID() {
+        int pTenantID = 0;
+        boolean validProspectiveTenantId = false;
+        while (!validProspectiveTenantId) {
+            System.out.print("Enter Prospective Tenant ID: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // Clear the invalid input
+            }
+            pTenantID = scanner.nextInt();
+            scanner.nextLine(); // Consume the rest of the line
+
+            if (pTenantID > 0 && checkProspectiveTenantExists(pTenantID)) {
+                validProspectiveTenantId = true;
+            } else {
+                System.out.println("No prospective tenant found with the given ID. Please enter a valid Prospective Tenant ID.");
+            }
+        }
+        return pTenantID;
+    }
+
+    private boolean checkProspectiveTenantExists(int pTenantID) {
+        String sql = "SELECT COUNT(*) FROM ProspectiveTenant WHERE PTenantID = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, pTenantID);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return false;
+    }
+
+    private int validateLeaseID() {
+        int leaseID = 0;
+        boolean validLeaseId = false;
+        while (!validLeaseId) {
+            System.out.print("Enter Lease ID: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // Clear the invalid input
+            }
+            leaseID = scanner.nextInt();
+            scanner.nextLine(); // Consume the rest of the line
+
+            if (leaseID > 0 && checkLeaseExists(leaseID)) {
+                validLeaseId = true;
+            } else {
+                System.out.println("No lease found with the given ID. Please enter a valid Lease ID.");
+            }
+        }
+        return leaseID;
+    }
+
+    private boolean checkLeaseExists(int leaseId) {
+        String sql = "SELECT COUNT(*) FROM Lease WHERE LeaseID = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, leaseId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return false;
     }
 
     private java.sql.Date validateAndInputDate() {
