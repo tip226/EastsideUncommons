@@ -835,48 +835,48 @@ private void processPayment(double amount, String paymentMethod) throws SQLExcep
         return 0; // Default to 0 if no data is found
     }
 
-private int getLeaseIDForTenant() throws SQLException {
-    String sql = "SELECT LeaseID FROM LeaseTenants WHERE TenantID = ?";
-    int leaseID = -1;
-    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-        stmt.setInt(1, tenantId);
-        ResultSet rs = stmt.executeQuery();
-        if (rs.next()) {
-            leaseID = rs.getInt("LeaseID");
-        }
-    } catch (SQLException e) {
-        System.out.println("Error fetching Lease ID: " + e.getMessage());
-    }
-    return leaseID;
-}
-public void addPetToLease() {
-    try {
-        int leaseID = getLeaseIDForTenant();
-        if (leaseID == -1) {
-            System.out.println("Lease ID not found for the tenant.");
-            return;
-        }
-
-        System.out.println("Enter Pet's Name:");
-        String petName = scanner.nextLine().trim();
-
-        System.out.println("Enter Pet Type:");
-        String petType = scanner.nextLine().trim();
-
-        String sql = "INSERT INTO Pets (PetName, PetType, TenantID) VALUES (?, ?, ?)";
+    private int getLeaseIDForTenant() throws SQLException {
+        String sql = "SELECT LeaseID FROM LeaseTenants WHERE TenantID = ?";
+        int leaseID = -1;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, petName);
-            stmt.setString(2, petType);
-            stmt.setInt(3, tenantId);
-            stmt.executeUpdate();
-            System.out.println("Pet added to lease successfully.");
+            stmt.setInt(1, tenantId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                leaseID = rs.getInt("LeaseID");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching Lease ID: " + e.getMessage());
         }
-    } catch (SQLException e) {
-        System.out.println("Error adding pet to lease: " + e.getMessage());
+        return leaseID;
     }
-}
+    public void addPetToLease() {
+        try {
+            int leaseID = getLeaseIDForTenant();
+            if (leaseID == -1) {
+                System.out.println("Lease ID not found for the tenant.");
+                return;
+            }
 
-private int validateProspectiveTenantID() {
+            System.out.println("Enter Pet's Name:");
+            String petName = scanner.nextLine().trim();
+
+            System.out.println("Enter Pet Type:");
+            String petType = scanner.nextLine().trim();
+
+            String sql = "INSERT INTO Pets (PetName, PetType, TenantID) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, petName);
+                stmt.setString(2, petType);
+                stmt.setInt(3, tenantId);
+                stmt.executeUpdate();
+                System.out.println("Pet added to lease successfully.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error adding pet to lease: " + e.getMessage());
+        }
+    }
+
+    private int validateProspectiveTenantID() {
         int pTenantID = 0;
         boolean validProspectiveTenantId = false;
         while (!validProspectiveTenantId) {
