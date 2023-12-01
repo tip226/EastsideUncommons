@@ -116,8 +116,12 @@ public class Tenant implements TenantInterface{
                 System.out.println("Lease has ended.");
                 showSecurityDepositReturnStatus(apartmentNumber);
             } else if (isBeforeLeaseStartDate(this.paymentDate)) {
-                System.out.println("Payment due for security deposit.");
-                totalDue += showSecurityDepositDetails();
+                if (hasPaidSecurityDeposit()) {
+                    System.out.println("Security deposit has been paid.");
+                } else {
+                    System.out.println("Payment due for security deposit.");
+                    totalDue += showSecurityDepositDetails();
+                }
             } else if (hasPaidForMonth(this.paymentDate)) {
                 System.out.println("All payments for the month are up to date.");
             } else {
@@ -186,15 +190,46 @@ public class Tenant implements TenantInterface{
     }
 
     private boolean hasPaidSecurityDeposit() throws SQLException {
-        String sql = "SELECT Amount FROM Payments WHERE TenantID = ? AND PaymentDate <= ? AND Amount = (SELECT SecurityDeposit FROM Lease WHERE AptNumber = ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantId);
-            stmt.setDate(2, paymentDate);
-            stmt.setInt(3, apartmentNumber);
-            ResultSet rs = stmt.executeQuery();
-            return rs.next();
+    // Query to get the lease start date and security deposit amount
+    String leaseInfoSql = "SELECT LeaseStartDate, SecurityDeposit FROM Lease WHERE AptNumber = ?";
+    java.sql.Date leaseStartDate = null;
+    double securityDepositAmount = 0.0;
+
+    try (PreparedStatement leaseInfoStmt = conn.prepareStatement(leaseInfoSql)) {
+        leaseInfoStmt.setInt(1, apartmentNumber);
+        ResultSet leaseInfoRs = leaseInfoStmt.executeQuery();
+        if (leaseInfoRs.next()) {
+            leaseStartDate = leaseInfoRs.getDate("LeaseStartDate");
+            securityDepositAmount = leaseInfoRs.getDouble("SecurityDeposit");
+
+            // Debug print
+            System.out.println("Lease Start Date: " + leaseStartDate);
+            System.out.println("Security Deposit Amount: " + securityDepositAmount);
         }
     }
+
+    // If lease start date or security deposit amount is not found, return false
+    if (leaseStartDate == null || securityDepositAmount == 0.0) {
+        return false;
+    }
+
+    // Query to check if there's a payment for the security deposit before the lease start date
+    String paymentCheckSql = "SELECT 1 FROM Payments WHERE TenantID = ? AND PaymentDate <= ? AND Amount = ?";
+    try (PreparedStatement paymentCheckStmt = conn.prepareStatement(paymentCheckSql)) {
+        paymentCheckStmt.setInt(1, tenantId);
+        paymentCheckStmt.setDate(2, leaseStartDate);
+        paymentCheckStmt.setDouble(3, securityDepositAmount);
+        ResultSet paymentCheckRs = paymentCheckStmt.executeQuery();
+
+        // Debug print
+        System.out.println("Query executed to check payment: " + paymentCheckSql);
+        System.out.println("TenantID: " + tenantId);
+        System.out.println("LeaseStartDate (for comparison): " + leaseStartDate);
+        System.out.println("SecurityDepositAmount (for comparison): " + securityDepositAmount);
+
+        return paymentCheckRs.next();
+    }
+}
 
     private double showSecurityDepositDetails() throws SQLException {
         String sql = "SELECT SecurityDeposit, AptNumber FROM Lease WHERE AptNumber = ?";
