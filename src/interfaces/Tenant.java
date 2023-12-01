@@ -109,22 +109,24 @@ public class Tenant implements TenantInterface{
             }
         }
     }
-    public void checkPaymentStatus() {
+    public double checkPaymentStatus() {
+        double totalDue = 0;
         try {
             if (isAfterLeaseEndDate(this.paymentDate)) {
                 System.out.println("Lease has ended.");
                 showSecurityDepositReturnStatus(apartmentNumber);
             } else if (isBeforeLeaseStartDate(this.paymentDate)) {
                 System.out.println("Payment due for security deposit.");
-                showSecurityDepositDetails();
+                totalDue += showSecurityDepositDetails();
             } else if (hasPaidForMonth(this.paymentDate)) {
                 System.out.println("All payments for the month are up to date.");
             } else {
-                showMonthlyRentAndAmenities();
+                totalDue += showMonthlyRentAndAmenities();
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
         }
+        return totalDue;
     }
 
     private boolean isAfterLeaseEndDate(java.sql.Date date) throws SQLException {
@@ -183,7 +185,18 @@ public class Tenant implements TenantInterface{
         }
     }
 
-    private void showSecurityDepositDetails() throws SQLException {
+    private boolean hasPaidSecurityDeposit() throws SQLException {
+        String sql = "SELECT Amount FROM Payments WHERE TenantID = ? AND PaymentDate <= ? AND Amount = (SELECT SecurityDeposit FROM Lease WHERE AptNumber = ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, tenantId);
+            stmt.setDate(2, paymentDate);
+            stmt.setInt(3, apartmentNumber);
+            ResultSet rs = stmt.executeQuery();
+            return rs.next();
+        }
+    }
+
+    private double showSecurityDepositDetails() throws SQLException {
         String sql = "SELECT SecurityDeposit, AptNumber FROM Lease WHERE AptNumber = ?";
         double totalSecurityDeposit = 0;
 
@@ -209,6 +222,8 @@ public class Tenant implements TenantInterface{
 
         System.out.println("----------------------------------------");
         System.out.println(String.format("%-30s %.2f", "Total Security Deposit Due", totalSecurityDeposit));
+
+        return totalSecurityDeposit;
     }
 
     private double getOneTimeAmenityCosts(int apartmentNumber) throws SQLException {
@@ -230,7 +245,7 @@ public class Tenant implements TenantInterface{
         return oneTimeCosts;
     }
 
-    private void showMonthlyRentAndAmenities() throws SQLException {
+    private double showMonthlyRentAndAmenities() throws SQLException {
         double totalDue = 0;
         System.out.println("Breakdown of Monthly Charges:");
         System.out.println(String.format("%-30s %s", "Item", "Amount"));
@@ -249,6 +264,8 @@ public class Tenant implements TenantInterface{
 
         System.out.println("----------------------------------------");
         System.out.println(String.format("%-30s %.2f", "Total Monthly Due", totalDue));
+
+        return totalDue;
     }
 
     private double showAmenityCosts(String amenityTable, String junctionTable, String joinColumn, int id, String amenityColumn) throws SQLException {
@@ -435,27 +452,73 @@ public class Tenant implements TenantInterface{
     }
 
     public void makeRentalPayment() {
-        // Prompt for payment date
-        System.out.print("Enter the payment date (YYYY-MM-DD): ");
-        java.sql.Date paymentDate = validateAndInputDate();
+    try {
+        // First, check what payments are due and calculate the total
+        double totalDue = checkPaymentStatus();
+        if (totalDue > 0) {
+            System.out.println("Total amount due: $" + totalDue);
+            System.out.println("Do you want to proceed with the payment? (Y/N)");
+            String confirmation = scanner.nextLine().trim().toUpperCase();
+            if ("Y".equals(confirmation)) {
+                System.out.println("Please select your payment method:");
+        System.out.println("1: Credit/Debit");
+        System.out.println("2: Cash");
+        System.out.println("3: Check");
+        System.out.println("4: Venmo");
+        System.out.println("5: Zelle");
+        System.out.println("6: Bank Transfer");
+        System.out.print("Enter your choice (1-6): ");
+        int choice = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
 
-        // Calculate total dues up to the entered date
-        double totalDueAmount = calculateTotalDuesUpToDate(tenantId, paymentDate);
-        System.out.println("Total due amount up to " + paymentDate + ": " + totalDueAmount);
+        String paymentMethod;
+        switch (choice) {
+            case 1:
+                paymentMethod = "Credit/Debit";
+                break;
+            case 2:
+                paymentMethod = "Cash";
+                break;
+            case 3:
+                paymentMethod = "Check";
+                break;
+            case 4:
+                paymentMethod = "Venmo";
+                break;
+            case 5:
+                paymentMethod = "Zelle";
+                break;
+            case 6:
+                paymentMethod = "Bank Transfer";
+                break;
+            default:
+                System.out.println("Invalid choice. Defaulting to Credit/Debit.");
+                paymentMethod = "Credit/Debit";
+        }
 
-        // Prompt for payment amount
-        System.out.print("Enter the amount you want to pay: ");
-        double paymentAmount = scanner.nextDouble();
-        scanner.nextLine(); // consume the rest of the line
-
-        // Display payment methods and prompt for selection
-        System.out.println("Payment Methods: Credit/Debit, Cash, Check, Venmo, Zelle, Bank Transfer");
-        System.out.print("Enter your payment method: ");
-        String paymentMethod = scanner.nextLine();
-
-        // Apply the payment
-        applyPayment(tenantId, paymentAmount, paymentDate, paymentMethod);
+        processPayment(totalDue, paymentMethod);
+        System.out.println("Payment of $" + totalDue + " made successfully via " + paymentMethod + ".");
+            } else {
+                System.out.println("Payment cancelled.");
+            }
+        } else {
+            System.out.println("No payment is due at this time.");
+        }
+    } catch (SQLException e) {
+        System.out.println("SQL Error: " + e.getMessage());
     }
+}
+
+private void processPayment(double amount, String paymentMethod) throws SQLException {
+    String sql = "INSERT INTO Payments (Amount, PaymentDate, PaymentMethod, TenantID) VALUES (?, ?, ?, ?)";
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setDouble(1, amount);
+        stmt.setDate(2, paymentDate);
+        stmt.setString(3, paymentMethod);
+        stmt.setInt(4, tenantId);
+        stmt.executeUpdate();
+    }
+}
 
     private double calculateTotalDuesUpToDate(int tenantId, java.sql.Date upToDate) {
         double totalDue = 0;

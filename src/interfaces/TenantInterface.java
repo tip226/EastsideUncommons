@@ -2,7 +2,7 @@ package interfaces;
 
 public interface TenantInterface {
     void showMenu();
-    void checkPaymentStatus();
+    double checkPaymentStatus();
     void makeRentalPayment();
     void updatePersonalData();
 }
