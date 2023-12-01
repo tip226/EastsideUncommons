@@ -577,26 +577,28 @@ private boolean checkActiveLease(int aptNumber) throws SQLException {
     }
 
     public void addPersonToLease(int leaseID) throws SQLException {
+        int tenantID = -1;
+        while (tenantID == -1) {
+            System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
+            String choice = scanner.nextLine().trim().toUpperCase();
 
-        System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
-        String choice = scanner.nextLine().trim().toUpperCase();
+            if ("P".equals(choice)) {
+                tenantID = selectProspectiveTenant();
+            } else if ("M".equals(choice)) {
+                tenantID = addTenantManually();
+            } else {
+                System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
+                // Continue the loop if invalid choice
+                continue;
+            }
 
-        int tenantID;
-        if ("P".equals(choice)) {
-            tenantID = selectProspectiveTenant();
-        } else if ("M".equals(choice)) {
-            tenantID = addTenantManually();
-        } else {
-            System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
-            return;
-        }
-
-        String sql = "INSERT INTO LeaseTenants (LeaseID, TenantID) VALUES (?, ?)";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, leaseID);
-            stmt.setInt(2, tenantID);
-            stmt.executeUpdate();
-            System.out.println("Tenant added to lease successfully.");
+            String sql = "INSERT INTO LeaseTenants (LeaseID, TenantID) VALUES (?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, leaseID);
+                stmt.setInt(2, tenantID);
+                stmt.executeUpdate();
+                System.out.println("Tenant added to lease successfully.");
+            }
         }
     }
 
