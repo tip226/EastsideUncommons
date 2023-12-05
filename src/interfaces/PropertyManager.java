@@ -149,7 +149,14 @@ public class PropertyManager implements PropertyManagerInterface{
         }
 
         System.out.println("Enter Tenant's Email:");
-        String email = scanner.nextLine().trim();
+        String email = "";
+        while (true) {
+            email = scanner.nextLine().trim();
+            if (email.contains("@") && email.contains(".")) { // Basic email validation
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid email:");
+        }
 
         System.out.println("Enter Tenant's Phone Number:");
         String phoneNumber = scanner.nextLine().trim();
@@ -231,9 +238,6 @@ public class PropertyManager implements PropertyManagerInterface{
     }
 
     public void recordVisitData() {
-        // Print list of apartments
-        DBTablePrinter.printTable(conn, "Apartments");
-
         System.out.println("Enter details for recording a visit");
 
         // Validate name
@@ -260,17 +264,20 @@ public class PropertyManager implements PropertyManagerInterface{
 
         // Validate phone number
         String phoneNumber = "";
-        System.out.println("Enter Visitor's Phone Number:");
+        System.out.println("Enter Visitor's Phone Number (10 digits):");
         while (true) {
             phoneNumber = scanner.nextLine().trim();
-            if (phoneNumber.matches("\\d+")) { // Checks if the input is numeric
+            if (phoneNumber.matches("\\d{10}")) { // Checks if the input is numeric
                 break;
             }
-            System.out.println("Invalid input. Please enter a valid phone number:");
+            System.out.println("Invalid input. Please enter a valid 10-digit phone number:");
         }
 
         System.out.println("Enter Visit Date (YYYY-MM-DD):");
         java.sql.Date visitDate = validateAndInputDate();
+
+        // Print list of apartments
+        DBTablePrinter.printTable(conn, "Apartments");
 
         // Validate apartment ID
         System.out.println("Enter Apartment ID for the visit:");
@@ -298,26 +305,27 @@ public class PropertyManager implements PropertyManagerInterface{
         double annualIncome = 0;
         while (true) {
             try {
-                annualIncome = Double.parseDouble(scanner.nextLine().trim());
-                if (annualIncome >= 0) {
+                String incomeInput = scanner.nextLine().trim();
+                annualIncome = Double.parseDouble(incomeInput);
+                if (annualIncome >= 0 && incomeInput.matches("\\d{1,18}(\\.\\d{0,2})?")) {
                     break;
                 }
-                System.out.println("Invalid input. Please enter a non-negative number:");
+                System.out.println("Invalid input. Please enter a non-negative number with up to 18 digits before the decimal:");
             } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a valid number:");
             }
         }
 
         // Credit score
-        System.out.println("Enter Credit Score:");
+        System.out.println("Enter Credit Score (300 - 850):");
         int creditScore = 0;
         while (true) {
             try {
                 creditScore = Integer.parseInt(scanner.nextLine().trim());
-                if (creditScore >= 0) {
+                if (creditScore >= 300 && creditScore <= 850) {
                     break;
                 }
-                System.out.println("Invalid input. Please enter a non-negative number:");
+                System.out.println("Invalid input. Please enter a number between 300 and 850:");
             } catch (NumberFormatException e) {
                 System.out.println("Invalid input. Please enter a valid number:");
             }
@@ -428,7 +436,7 @@ private int insertLeaseData(int aptNumber, java.sql.Date leaseStartDate, java.sq
 }
 
 private boolean checkActiveLease(int aptNumber) throws SQLException {
-    String sql = "SELECT COUNT(*) FROM Lease WHERE AptNumber = ? AND LeaseEndDate > CURRENT_DATE";
+    String sql = "SELECT COUNT(*) FROM Lease WHERE AptNumber = ?";
     try (PreparedStatement stmt = conn.prepareStatement(sql)) {
         stmt.setInt(1, aptNumber);
         ResultSet rs = stmt.executeQuery();
@@ -861,7 +869,7 @@ private boolean checkActiveLease(int aptNumber) throws SQLException {
         while (true) {
             System.out.println(prompt);
             input = scanner.nextLine().trim();
-            if (input.matches("\\d+(\\.\\d{1,2})?")) { // Updated regex here
+            if (input.matches("\\d{1,8}(\\.\\d{1,2})?")) { // Updated regex here
                 try {
                     value = Double.parseDouble(input);
                     break;
@@ -869,7 +877,7 @@ private boolean checkActiveLease(int aptNumber) throws SQLException {
                     System.out.println("Invalid input. Please enter a valid number.");
                 }
             } else {
-                System.out.println("Please enter a valid amount with up to two decimal places.");
+                System.out.println("Please enter a valid amount with up to eight digits before the decimal and up to two decimal places.");
             }
         }
         return value;

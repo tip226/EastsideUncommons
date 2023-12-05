@@ -79,7 +79,7 @@ public class DatabaseConnector {
                         conn.close(); // Close the connection before exiting
                         return;
                     default:
-                        System.out.println("Invalid choice. Please enter a number between 1 and 5.");
+                        System.out.println("Invalid choice. Please enter a number between 1 and 6.");
                         break;
                 }
             }
