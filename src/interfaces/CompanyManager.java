@@ -76,8 +76,7 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("3: Remove Property");
         System.out.println("4: Back to Main Menu");
 
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
+        int choice = getValidInput(4);
 
         switch (choice) {
             case 1:
@@ -103,8 +102,7 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("3: Remove Apartment");
         System.out.println("4: Back to Main Menu");
 
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
+        int choice = getValidInput(4);
 
         switch (choice) {
             case 1:
@@ -133,8 +131,7 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("6: Remove Private Amenity");
         System.out.println("7: Back to Main Menu");
 
-        int choice = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
+        int choice = getValidInput(7);
 
         switch (choice) {
             case 1:
@@ -160,6 +157,26 @@ public class CompanyManager implements CompanyManagerInterface {
             default:
                 System.out.println("Invalid option selected. Please try again.");
         }
+    }
+
+    private int getValidInput(int maxOption) {
+        int input = 0;
+        boolean validInput = false;
+
+        while (!validInput) {
+            if (scanner.hasNextInt()) {
+                input = scanner.nextInt();
+                validInput = input > 0 && input <= maxOption;
+            } else {
+                scanner.next(); // Consume the invalid input
+            }
+
+            if (!validInput) {
+                System.out.println("Invalid input. Please enter a number between 1 and " + maxOption + ".");
+            }
+        }
+        scanner.nextLine(); // Consume the rest of the line
+        return input;
     }
 
     public void addNewProperty() {
