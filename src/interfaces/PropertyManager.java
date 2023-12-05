@@ -538,14 +538,51 @@ private boolean checkActiveLease(int aptNumber) throws SQLException {
             DBTablePrinter.printTable(conn, "Lease");
             int leaseID = validateLeaseID();
 
-            System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
-            java.sql.Date moveOutDate = validateAndInputDate();
+            // Retrieve lease start and end dates
+            java.sql.Date leaseStartDate = getLeaseStartDate(leaseID);
+            java.sql.Date leaseEndDate = getLeaseEndDate(leaseID);
+
+            java.sql.Date moveOutDate = null;
+            while (moveOutDate == null) {
+                System.out.println("Enter Move-Out Date (YYYY-MM-DD):");
+                moveOutDate = validateAndInputDate();
+
+                // Check if move-out date is within the lease period
+                if (moveOutDate.before(leaseStartDate) || moveOutDate.after(leaseEndDate)) {
+                    System.out.println("Move-Out Date must be between Lease Start Date and Lease End Date.");
+                    moveOutDate = null; // Reset to null to re-prompt the user
+                }
+            }
 
             // Ask about damages and update lease
             handleDamageAssessmentAndUpdateLease(leaseID, moveOutDate);
         } catch (SQLException e) {
             System.out.println("Error in updating move-out details: " + e.getMessage());
         }
+    }
+
+    private java.sql.Date getLeaseStartDate(int leaseID) throws SQLException {
+        String sql = "SELECT LeaseStartDate FROM Lease WHERE LeaseID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDate("LeaseStartDate");
+            }
+        }
+        return null; // Return null if no start date found
+    }
+
+    private java.sql.Date getLeaseEndDate(int leaseID) throws SQLException {
+        String sql = "SELECT LeaseEndDate FROM Lease WHERE LeaseID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, leaseID);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDate("LeaseEndDate");
+            }
+        }
+        return null; // Return null if no end date found
     }
 
     private void handleDamageAssessmentAndUpdateLease(int leaseID, java.sql.Date moveOutDate) throws SQLException {
