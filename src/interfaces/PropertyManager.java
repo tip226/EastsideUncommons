@@ -28,8 +28,7 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("3: Record Move-Out");
             System.out.println("4: Add Person to Lease");
             System.out.println("5: Add Pet to Tenant");
-            System.out.println("6: Manage Tenants");
-            System.out.println("7: Exit");
+            System.out.println("6: Exit");
 
             try {
                 System.out.print("Select an option: ");
@@ -55,9 +54,6 @@ public class PropertyManager implements PropertyManagerInterface{
                         addPetToLease(leaseID);
                         break;
                     case 6:
-                        manageTenantsMenu();
-                        break;
-                    case 7:
                         System.out.println("Exiting Property Manager Interface.");
                         return;
                     default:
@@ -71,57 +67,6 @@ public class PropertyManager implements PropertyManagerInterface{
             }
         }
             
-    }
-
-    private void manageTenantsMenu() {
-        while (true) {
-            System.out.println("Tenant Management");
-            System.out.println("1: Add Tenant");
-            System.out.println("2: Edit Tenant");
-            System.out.println("3: Remove Tenant");
-            System.out.println("4: Return to Main Menu");
-
-            try {
-                System.out.print("Select an option: ");
-                int option = Integer.parseInt(scanner.nextLine()); // parse the input as integer
-
-                switch (option) {
-                    case 1:
-                        addTenant();
-                        break;
-                    case 2:
-                        editTenant();
-                        break;
-                    case 3:
-                        removeTenant();
-                        break;
-                    case 4:
-                        return;
-                    default:
-                        System.out.println("Invalid option selected. Please try again.");
-                        break;
-                }
-            } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a number.");
-            }
-        }
-    }
-
-    private void addTenant() {
-        System.out.println("Do you want to add a tenant manually (M) or select from prospective tenants (P)?");
-        String choice = scanner.nextLine().trim().toUpperCase();
-
-        try {
-            if ("P".equals(choice)) {
-                addTenantFromProspective();
-            } else if ("M".equals(choice)) {
-                addTenantManually();
-            } else {
-                System.out.println("Invalid choice. Please choose 'M' for manually or 'P' for prospective tenants.");
-            }
-        } catch (SQLException e) {
-            System.out.println("SQL Error: " + e.getMessage());
-        }
     }
 
     private void addTenantFromProspective() {
@@ -158,8 +103,15 @@ public class PropertyManager implements PropertyManagerInterface{
             System.out.println("Invalid input. Please enter a valid email:");
         }
 
-        System.out.println("Enter Tenant's Phone Number:");
-        String phoneNumber = scanner.nextLine().trim();
+        String phoneNumber = "";
+        System.out.println("Enter Tenant's Phone Number (10 digits):");
+        while (true) {
+            phoneNumber = scanner.nextLine().trim();
+            if (phoneNumber.matches("\\d{10}")) { // Checks if the input is numeric
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid 10-digit phone number:");
+        }
 
         int tenantID = -1;
         String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
@@ -185,56 +137,6 @@ public class PropertyManager implements PropertyManagerInterface{
         }
 
         return tenantID;
-    }
-
-    private void editTenant() {
-        System.out.println("Enter Tenant ID to Edit:");
-        int tenantID = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
-
-        System.out.println("Enter Updated Tenant's Name:");
-        String tenantName = scanner.nextLine().trim();
-
-        System.out.println("Enter Updated Tenant's Email:");
-        String email = scanner.nextLine().trim();
-
-        System.out.println("Enter Updated Tenant's Phone Number:");
-        String phoneNumber = scanner.nextLine().trim();
-
-        String sql = "UPDATE Tenants SET TenantName = ?, Email = ?, PhoneNumber = ? WHERE TenantID = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, tenantName);
-            stmt.setString(2, email);
-            stmt.setString(3, phoneNumber);
-            stmt.setInt(4, tenantID);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Tenant updated successfully.");
-            } else {
-                System.out.println("No Tenant found with the provided ID.");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error updating tenant: " + e.getMessage());
-        }
-    }
-
-    private void removeTenant() {
-        System.out.println("Enter Tenant ID to Remove:");
-        int tenantID = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
-
-        String sql = "DELETE FROM Tenants WHERE TenantID = ?";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, tenantID);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Tenant removed successfully.");
-            } else {
-                System.out.println("No Tenant found with the provided ID.");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error removing tenant: " + e.getMessage());
-        }
     }
 
     public void recordVisitData() {
