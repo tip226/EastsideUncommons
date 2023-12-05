@@ -36,29 +36,62 @@ public class Tenant implements TenantInterface{
         }
     }
 
-    public int promptForTenantId() {
-        try {
-            PreparedStatement stmt = conn.prepareStatement("SELECT TenantID, TenantName FROM Tenants");
-            ResultSet rs = stmt.executeQuery();
+public int promptForTenantId() {
+    try {
+        PreparedStatement stmt = conn.prepareStatement("SELECT TenantID, TenantName FROM Tenants");
+        ResultSet rs = stmt.executeQuery();
 
-            // Print header
-            System.out.println("Tenant ID\tTenant Name");
-            System.out.println("----------\t-----------");
+        // Print header
+        System.out.println("Tenant ID\tTenant Name");
+        System.out.println("----------\t-----------");
 
-            // Print rows
-            while (rs.next()) {
-                int id = rs.getInt("TenantID");
-                String name = rs.getString("TenantName");
-                System.out.println(id + "\t\t" + name);
-            }
-
-            System.out.print("Enter Tenant ID to select: ");
-            return scanner.nextInt();
-        } catch (SQLException e) {
-            System.out.println("Error fetching tenants: " + e.getMessage());
-            return -1; // Indicates an error
+        // Print rows
+        while (rs.next()) {
+            int id = rs.getInt("TenantID");
+            String name = rs.getString("TenantName");
+            System.out.println(id + "\t\t" + name);
         }
+
+        int tenantId = -1;
+        boolean validInput = false;
+
+        while (!validInput) {
+            System.out.print("Enter Tenant ID to select: ");
+            if (scanner.hasNextInt()) {
+                tenantId = scanner.nextInt();
+                // Check if the Tenant ID exists in the database
+                if (checkTenantExists(tenantId)) {
+                    validInput = true; // Break out of the loop if the ID exists
+                } else {
+                    System.out.println("No tenant found with the given ID. Please enter a valid Tenant ID.");
+                }
+            } else {
+                System.out.println("Invalid input. Please enter a valid Tenant ID.");
+                scanner.next(); // Consume the invalid input
+            }
+        }
+
+        return tenantId;
+
+    } catch (SQLException e) {
+        System.out.println("Error fetching tenants: " + e.getMessage());
+        return -1; // Indicates an error
     }
+}
+
+private boolean checkTenantExists(int tenantId) {
+    String query = "SELECT COUNT(*) FROM Tenants WHERE TenantID = ?";
+    try (PreparedStatement stmt = conn.prepareStatement(query)) {
+        stmt.setInt(1, tenantId);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return rs.getInt(1) > 0; // Returns true if the count is greater than 0
+        }
+    } catch (SQLException e) {
+        System.out.println("Error checking tenant existence: " + e.getMessage());
+    }
+    return false; // Default to false if tenant does not exist or an error occurs
+}
 
     private void promptForPaymentDate() {
         System.out.print("Enter the payment date (YYYY-MM-DD): ");
@@ -636,18 +669,40 @@ private void processPayment(double amount, String paymentMethod) throws SQLExcep
     }
 
     public void updatePersonalData() {
-        System.out.println("Enter Updated Tenant's Name:");
-        String tenantName = scanner.nextLine().trim();
+        // Validate name
+        String name = "";
+        System.out.println("Enter Updated Tenant's Full Name (First and Last Name):");
+        while (true) {
+            name = scanner.nextLine().trim();
+            if (name.split("\\s+").length >= 2) { // Checks if there are at least two words
+                break;
+            }
+            System.out.println("Invalid input. Please enter both first and last name:");
+        }
 
         System.out.println("Enter Updated Tenant's Email:");
-        String email = scanner.nextLine().trim();
+        String email = "";
+        while (true) {
+            email = scanner.nextLine().trim();
+            if (email.contains("@") && email.contains(".")) { // Basic email validation
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid email:");
+        }
 
-        System.out.println("Enter Updated Tenant's Phone Number:");
-        String phoneNumber = scanner.nextLine().trim();
+        String phoneNumber = "";
+        System.out.println("Enter Updated Tenant's Phone Number (10 digits):");
+        while (true) {
+            phoneNumber = scanner.nextLine().trim();
+            if (phoneNumber.matches("\\d{10}")) { // Checks if the input is numeric
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid 10-digit phone number:");
+        }
 
         String sql = "UPDATE Tenants SET TenantName = ?, Email = ?, PhoneNumber = ? WHERE TenantID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, tenantName);
+            stmt.setString(1, name);
             stmt.setString(2, email);
             stmt.setString(3, phoneNumber);
             stmt.setInt(4, tenantId);
@@ -767,10 +822,24 @@ private void processPayment(double amount, String paymentMethod) throws SQLExcep
         }
 
         System.out.println("Enter Tenant's Email:");
-        String email = scanner.nextLine().trim();
+        String email = "";
+        while (true) {
+            email = scanner.nextLine().trim();
+            if (email.contains("@") && email.contains(".")) { // Basic email validation
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid email:");
+        }
 
-        System.out.println("Enter Tenant's Phone Number:");
-        String phoneNumber = scanner.nextLine().trim();
+        String phoneNumber = "";
+        System.out.println("Enter Tenant's Phone Number (10 digits):");
+        while (true) {
+            phoneNumber = scanner.nextLine().trim();
+            if (phoneNumber.matches("\\d{10}")) { // Checks if the input is numeric
+                break;
+            }
+            System.out.println("Invalid input. Please enter a valid 10-digit phone number:");
+        }
 
         int tenantID = -1;
         String insertSql = "INSERT INTO Tenants (TenantName, Email, PhoneNumber) VALUES (?, ?, ?)";
