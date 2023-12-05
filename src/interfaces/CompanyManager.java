@@ -28,8 +28,20 @@ public class CompanyManager implements CompanyManagerInterface {
             System.out.println("6: Exit");
 
             System.out.print("Select an option: ");
-            int option = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
+
+            int option = 0;
+            boolean validInput = false;
+
+            while (!validInput) {
+                if (scanner.hasNextInt()) {
+                    option = scanner.nextInt();
+                    validInput = true; // Valid integer input
+                } else {
+                    System.out.println("Invalid input. Please enter a number.");
+                    scanner.next(); // Consume the invalid input
+                }
+            }
+            scanner.nextLine(); // Consume the rest of the line after integer input
 
             switch (option) {
                 case 1:
