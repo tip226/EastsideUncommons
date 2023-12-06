@@ -4,6 +4,11 @@
 - **Name:** Tina Pham
 - **Email:** [tip226@lehigh.edu](mailto:tip226@lehigh.edu)
 
+## Reading the README file
+If you wish to open the README from the terminal, you can use the following command:
+```
+cat README
+```
 ## Running the Application
 
 ### As a Jar File

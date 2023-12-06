@@ -1,2 +1,0 @@
-Main-class: Test
-Class-Path: ojdbc11.jar
