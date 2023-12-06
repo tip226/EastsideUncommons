@@ -1,2 +1,8 @@
-ProspectiveTenantID, Name, VisitDate, EligibilityInfo
-4, Girly Pop, 2023-01-10, Tina's friend
+Name, Email, PhoneNumber, VisitDate, ApartmentVisited, EmploymentStatus, AnnualIncome, CreditScore
+Thuy Pham, dinhthuy68@gmail.com, 8173308845, 2023-02-18, 12, Employed, 100994, 634
+Alex Johnson, alexj99@mail.com, 9234567890, 2023-04-22, 5, Self-Employed, 87500, 710
+Sara Smith, ssmith2023@yahoo.com, 8123456789, 2023-03-15, 8, Unemployed, 0, 580
+Raj Patel, rajpatel34@hotmail.com, 8174567890, 2023-05-05, 15, Employed, 65000, 665
+Maria Garcia, mariagarcia@mail.com, 8234567891, 2023-01-20, 10, Employed, 78000, 720
+Liam Chen, liamchen@mail.com, 8245678901, 2023-03-25, 6, Student, 20000, 680
+Emily Nguyen, emilynguyen2023@gmail.com, 8123678902, 2023-02-12, 3, Employed, 95000, 699

@@ -1,4 +1,8 @@
-AmenityID, AmenityName, Cost
-1, Swimming Pool, 10000
-2, Gym, 15000
-3, Tennis Court, 20000
+AmenityName, IsAvailable, Cost, CostType
+Swimming Pool, Y, 0.00, Included
+Gym, Y, 0.00, Included
+Tennis Courts, Y, 0.00, Included
+Sauna, Y, 20.00, Monthly
+Roof Deck, Y, 0.00, Included
+Parking Lot, Y, 100.00, Monthly
+Storage Unit, Y, 50.00, One-time

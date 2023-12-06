@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Scanner;
+import java.io.Console;
 
 public class DatabaseConnector {
     private static final String DB_URL = "jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241";
@@ -17,14 +18,19 @@ public class DatabaseConnector {
     }
 
     public Connection connect() {
+        Console console = System.console();
+        if (console == null) {
+            System.out.println("No console available");
+            return null;
+        }
+
         do {
             try {
-                // System.out.print("Enter Oracle user id: ");
-                // String user = scanner.nextLine();
-                // System.out.print("Enter Oracle password for " + user + ": ");
-                // String pass = scanner.nextLine();
-                String user = "tip226"; // hard coded for now for faster testing
-                String pass = "tina@CSE241"; // hard coded for now for faster testing
+                System.out.print("Enter Oracle user id: ");
+                String user = scanner.nextLine();
+                char[] passArray = console.readPassword("Enter Oracle password for " + user + ": ");
+                String pass = new String(passArray);
+
                 conn = DriverManager.getConnection(DB_URL, user, pass);
                 System.out.println("Super! I'm connected.");
                 return conn;

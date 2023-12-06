@@ -1,4 +1,6 @@
 TenantID, TenantName, Email, PhoneNumber
+1, Santa Claus, santaclaus@gmail.com, 7432907260
+2, Secret Santa, secretsanta@lehigh.edu, 289-158-4929
 3, Tina Pham, tip226@lehigh.edu, 484-937-6437
 4, Girly Pop, girlypop@gmail.om, 610-555-5555
 5, Pink Monkey, pinkmonkey@gmail.com, 929-231-6007

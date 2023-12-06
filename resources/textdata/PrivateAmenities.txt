@@ -1,3 +1,6 @@
-PrivateAmenityID, AmenityName, Cost
-1, "Private Pool", 1500
-2, "Gym Access", 50
+AmenityName, IsAvailable, Cost, CostType
+Private Pool, Y, 0.00, Monthly
+Private Garage, Y, 0.00, Included
+High-Speed Internet Setup, 50.50, Monthly
+Cleaning Service, 100.00, Monthly
+Security System Installation, Y, 800.00, One-time

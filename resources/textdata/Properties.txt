@@ -1,4 +1,6 @@
 PropertyID, Street, City, State, ZIPCode
+1, 123 Elm St, SomeCity, SC, 01234
+2, 345 Ash St, AnyCity, AC, 98765
 3, 789 Oak St, AnotherCity, AC, 13579
 4, 216 Pine St, LastCity, LC, 24680
 5, 357 Maple St, FinalCity, FC, 97531
