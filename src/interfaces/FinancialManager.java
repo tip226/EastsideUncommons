@@ -8,6 +8,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
 
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class FinancialManager implements FinancialManagerInterface {
     private Connection conn;
     private Scanner scanner;
@@ -25,9 +31,7 @@ public class FinancialManager implements FinancialManagerInterface {
             System.out.println("3. Exit");
 
             System.out.print("Select an option: ");
-            int option = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
-
+            int option = getInputInteger();
             switch (option) {
                 case 1:
                     viewPropertyData();
@@ -45,39 +49,45 @@ public class FinancialManager implements FinancialManagerInterface {
         }
     }
 
+    // Method to get integer input from user
+    private int getInputInteger() {
+        while (!scanner.hasNextInt()) {
+            System.out.println("Invalid input. Please enter a number:");
+            scanner.next(); // consume the invalid input
+        }
+        int number = scanner.nextInt();
+        scanner.nextLine(); // consume the newline character
+        return number;
+    }
+
     public void viewPropertyData() {
         DBTablePrinter.printTable(conn, "Property");
         System.out.println("Enter Property ID (enter '0' for all properties):");
-        int propertyId = scanner.nextInt();
-        scanner.nextLine(); // Consume the newline
+        int propertyId = getInputInteger();
 
         try {
             if (propertyId == 0) {
                 // Query for all properties
-                System.out.println("Property Financial Data (All Properties):");
                 String queryAll = "SELECT p.PropertyID, SUM(l.MonthlyRent) AS TotalRent, COUNT(l.AptNumber) AS NumberOfLeases "
                                 + "FROM Property p LEFT JOIN Apartments a ON p.PropertyID = a.PropertyID_Ref "
                                 + "LEFT JOIN Lease l ON a.AptNumber = l.AptNumber GROUP BY p.PropertyID";
                 PreparedStatement stmtAll = conn.prepareStatement(queryAll);
                 ResultSet rsAll = stmtAll.executeQuery();
-                while (rsAll.next()) {
-                    System.out.println("Property ID: " + rsAll.getInt("PropertyID") 
-                                    + ", Total Rent: " + rsAll.getDouble("TotalRent") 
-                                    + ", Number of Leases: " + rsAll.getInt("NumberOfLeases"));
-                }
+
+                // Print results in a table format
+                DBTablePrinter.printResultSet(rsAll);
+
             } else {
                 // Query for a specific property
-                System.out.println("Property Financial Data (Property ID: " + propertyId + "):");
                 String querySpecific = "SELECT SUM(l.MonthlyRent) AS TotalRent, COUNT(l.AptNumber) AS NumberOfLeases "
                                     + "FROM Apartments a LEFT JOIN Lease l ON a.AptNumber = l.AptNumber "
                                     + "WHERE a.PropertyID_Ref = ?";
                 PreparedStatement stmtSpecific = conn.prepareStatement(querySpecific);
                 stmtSpecific.setInt(1, propertyId);
                 ResultSet rsSpecific = stmtSpecific.executeQuery();
-                if (rsSpecific.next()) {
-                    System.out.println("Total Rent: " + rsSpecific.getDouble("TotalRent") 
-                                    + ", Number of Leases: " + rsSpecific.getInt("NumberOfLeases"));
-                }
+
+                // Print results in a table format
+                DBTablePrinter.printResultSet(rsSpecific);
             }
         } catch (SQLException e) {
             System.out.println("SQL Error: " + e.getMessage());
