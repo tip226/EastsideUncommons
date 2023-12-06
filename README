@@ -11,6 +11,8 @@ cat README
 ```
 ## Running the Application
 
+Make sure you're in the `tip226` folder to run the application. The `tip226` directory contains the Java project code in the `interfaces` and `db` folders. Here you can run the program in two ways:
+
 ### As a Jar File
 Run the JAR file with:
 ```
@@ -18,7 +20,7 @@ java -jar tip226.jar
 ```
 
 ### Compilation
-There's a makefile included in the `src` folder. To compile the program, run the following command in the `src` folder:
+There's a makefile included in the `tip226` folder. To compile the program, run the following command in the `tip226` folder:
 ```
 make
 ```
@@ -127,5 +129,5 @@ Each interface in the system serves a specific role:
 ### Credits
 - `DBTablePrinter` code adapted from [GitHub - htorun/dbtableprinter](https://github.com/htorun/dbtableprinter).
 - Some of the data used in this project is generated or sourced from [Mockaroo](https://www.mockaroo.com/).
-
+- In the [resources](resources/textdata) folder are text files that contain some data that can be used to insert into the database.
 ---
