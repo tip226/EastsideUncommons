@@ -73,10 +73,9 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("Property Management");
         System.out.println("1: Add New Property");
         System.out.println("2: Edit Property");
-        System.out.println("3: Remove Property");
-        System.out.println("4: Back to Main Menu");
+        System.out.println("3: Back to Main Menu");
 
-        int choice = getValidInput(4);
+        int choice = getValidInput(3);
 
         switch (choice) {
             case 1:
@@ -86,9 +85,6 @@ public class CompanyManager implements CompanyManagerInterface {
                 editProperty();
                 break;
             case 3:
-                removeProperty();
-                break;
-            case 4:
                 return;
             default:
                 System.out.println("Invalid option selected. Please try again.");
@@ -99,10 +95,9 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("Apartment Management");
         System.out.println("1: Automatically Generate Apartments for a Property");
         System.out.println("2: Edit Apartment");
-        System.out.println("3: Remove Apartment");
-        System.out.println("4: Back to Main Menu");
+        System.out.println("3: Back to Main Menu");
 
-        int choice = getValidInput(4);
+        int choice = getValidInput(3);
 
         switch (choice) {
             case 1:
@@ -112,9 +107,6 @@ public class CompanyManager implements CompanyManagerInterface {
                 editApartment();
                 break;
             case 3:
-                removeApartment();
-                break;
-            case 4:
                 return;
             default:
                 System.out.println("Invalid option selected. Please try again.");
@@ -125,13 +117,11 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.println("Amenity Management");
         System.out.println("1: Add New Common Amenity");
         System.out.println("2: Edit Common Amenity");
-        System.out.println("3: Remove Common Amenity");
-        System.out.println("4: Add New Private Amenity");
-        System.out.println("5: Edit Private Amenity");
-        System.out.println("6: Remove Private Amenity");
-        System.out.println("7: Back to Main Menu");
+        System.out.println("3: Add New Private Amenity");
+        System.out.println("4: Edit Private Amenity");
+        System.out.println("5: Back to Main Menu");
 
-        int choice = getValidInput(7);
+        int choice = getValidInput(5);
 
         switch (choice) {
             case 1:
@@ -141,18 +131,12 @@ public class CompanyManager implements CompanyManagerInterface {
                 editCommonAmenity();
                 break;
             case 3:
-                removeCommonAmenity();
-                break;
-            case 4:
                 addNewPrivateAmenity();
                 break;
-            case 5:
+            case 4:
                 editPrivateAmenity();
                 break;
-            case 6:
-                removePrivateAmenity();
-                break;
-            case 7:
+            case 5:
                 return;
             default:
                 System.out.println("Invalid option selected. Please try again.");
@@ -186,7 +170,7 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.print("Street: ");
         String street = scanner.nextLine();
         while (!isValidStreet(street)) {
-            System.out.println("Invalid street. Please try again.");
+            System.out.println("Invalid street. Please try again. Make sure the format is a number followed by a street name. Ex: 123 Main St");
             street = scanner.nextLine();
         }
 
@@ -228,22 +212,25 @@ public class CompanyManager implements CompanyManagerInterface {
     // Validation Methods
 
     private boolean isValidStreet(String street) {
-        // Example: Check if the street is not empty
-        return street != null && !street.trim().isEmpty();
+        // Regular expression for street validation
+        String regex = "\\d+\\s+([a-zA-Z]+|[a-zA-Z]+\\s[a-zA-Z]+)";
+
+        // Check if the street is not empty and matches the regex
+        return street != null && !street.trim().isEmpty() && street.matches(regex);
     }
 
     private boolean isValidCity(String city) {
-        // Example: Check if the city is not empty
+        // Check if the city is not empty
         return city != null && !city.trim().isEmpty();
     }
 
     private boolean isValidState(String state) {
-        // Example: Check if the state is 2 characters long
+        // Check if the state is 2 characters long
         return state != null && state.length() == 2 && state.matches("^[a-zA-Z]{2}$");
     }
 
     private boolean isValidZipCode(String zipCode) {
-        // Example: U.S. ZIP code validation (5 digits or 5+4 format)
+        // U.S. ZIP code validation (5 digits or 5+4 format)
         return zipCode != null && zipCode.matches("^\\d{5}(-\\d{4})?$");
     }
 
@@ -254,7 +241,6 @@ public class CompanyManager implements CompanyManagerInterface {
         int propertyId = 0;
         boolean validPropertyId = false;
         while (!validPropertyId) {
-            System.out.print("Enter the Property ID for which to generate apartments: ");
             while (!scanner.hasNextInt()) {
                 System.out.println("Invalid input. Please enter a positive integer: ");
                 scanner.next(); // clear the invalid input
@@ -271,12 +257,31 @@ public class CompanyManager implements CompanyManagerInterface {
 
         System.out.print("New Street: ");
         String street = scanner.nextLine();
+        while (!isValidStreet(street)) {
+            System.out.println("Invalid street. Please try again. Make sure the format is a number followed by a street name. Ex: 123 Main St");
+            street = scanner.nextLine();
+        }
+
         System.out.print("New City: ");
         String city = scanner.nextLine();
-        System.out.print("New State: ");
+        while (!isValidCity(city)) {
+            System.out.println("Invalid city. Please try again.");
+            city = scanner.nextLine();
+        }
+
+        System.out.print("New State (2 characters): ");
         String state = scanner.nextLine();
+        while (!isValidState(state)) {
+            System.out.println("Invalid state. Should be 2 characters long. Please try again.");
+            state = scanner.nextLine();
+        }
+
         System.out.print("New ZIP Code: ");
         String zipCode = scanner.nextLine();
+        while (!isValidZipCode(zipCode)) {
+            System.out.println("Invalid ZIP Code. Should be 5 digits. Please try again.");
+            zipCode = scanner.nextLine();
+        }
 
         // Update property data in database
         String sql = "UPDATE Property SET Street = ?, City = ?, State = ?, ZIPCode = ? WHERE PropertyID = ?";
@@ -378,24 +383,54 @@ public class CompanyManager implements CompanyManagerInterface {
         DBTablePrinter.printTable(conn, "Apartments");
 
         System.out.print("Enter the Apartment Number to edit: ");
-        int aptNumber;
-        while (!scanner.hasNextInt() || (aptNumber = scanner.nextInt()) <= 0) {
-            System.out.println("Invalid input. Please enter a positive integer: ");
+        int aptNumber = validateApartmentID();
+
+        System.out.print("Enter common apartment size (square feet): ");
+        double size;
+        while (!scanner.hasNextDouble() || (size = scanner.nextDouble()) <= 0) {
+            System.out.println("Invalid input. Please enter a positive number for square feet: ");
             scanner.nextLine(); // clear the invalid input
         }
-        scanner.nextLine(); // consume the rest of the line
 
-        System.out.print("New Apartment Size (square feet): ");
-        double size = scanner.nextDouble();
-        System.out.print("New Number of Bedrooms: ");
-        int bedrooms = scanner.nextInt();
-        System.out.print("New Number of Bathrooms: ");
-        double bathrooms = scanner.nextDouble();
-        System.out.print("New Monthly Rent: $");
-        double monthlyRent = scanner.nextDouble();
-        System.out.print("New Security Deposit: $");
-        double securityDeposit = scanner.nextDouble();
+        System.out.print("Enter number of bedrooms: ");
+        int bedrooms;
+        while (true) {
+            if (scanner.hasNextInt()) {
+                bedrooms = scanner.nextInt();
+                if (bedrooms >= 0) break;
+                else System.out.print("Invalid input. Please enter a non-negative integer: ");
+            } else {
+                System.out.print("Invalid input. Please enter an integer: ");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
+        System.out.print("Enter number of bathrooms: ");
+        double bathrooms;
+        while (true) {
+            if (scanner.hasNextDouble()) {
+                bathrooms = scanner.nextDouble();
+                if (bathrooms >= 0) break;
+                else System.out.print("Invalid input. Please enter a non-negative number: ");
+            } else {
+                System.out.print("Invalid input. Please enter a number: ");
+                scanner.next(); // clear the invalid input
+            }
+        }
+
+        System.out.print("Enter monthly rent: $");
+        double monthlyRent;
+        while (!scanner.hasNextDouble() || (monthlyRent = scanner.nextDouble()) < 0) {
+            System.out.println("Invalid input. Please enter a non-negative number: ");
+            scanner.nextLine(); // clear the invalid input
+        }
+
+        System.out.print("Enter security deposit: $");
+        double securityDeposit;
+        while (!scanner.hasNextDouble() || (securityDeposit = scanner.nextDouble()) < 0) {
+            System.out.println("Invalid input. Please enter a non-negative number: ");
+            scanner.nextLine(); // clear the invalid input
+        }
         // Update apartment data in database
         String sql = "UPDATE Apartments SET AptSize = ?, Bedrooms = ?, Bathrooms = ?, MonthlyRent = ?, SecurityDeposit = ? WHERE AptNumber = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -575,7 +610,7 @@ public class CompanyManager implements CompanyManagerInterface {
         System.out.print("Do you want to manage amenities for these apartments? (y/n): ");
         String manageAmenities = scanner.nextLine();
         while (!manageAmenities.equalsIgnoreCase("y") && !manageAmenities.equalsIgnoreCase("n")) {
-            System.out.println("Invalid input. Please enter 'y' or 'n': ");
+            System.out.println("Please enter 'y' or 'n': ");
             manageAmenities = scanner.nextLine();
         }
 
@@ -624,9 +659,22 @@ public class CompanyManager implements CompanyManagerInterface {
             // Display available common amenities
             DBTablePrinter.printTable(conn, "CommonAmenities");
 
-            System.out.print("Enter the Amenity ID to assign to this property: ");
-            int amenityId = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
+            int amenityId = -1;
+            boolean validAmenityId = false;
+            while (!validAmenityId) {
+                System.out.print("Enter the Amenity ID to assign to this property: ");
+                if (scanner.hasNextInt()) {
+                    amenityId = scanner.nextInt();
+                    scanner.nextLine(); // consume the rest of the line
+                    validAmenityId = validateCommonAmenityId(amenityId);
+                    if (!validAmenityId) {
+                        System.out.println("Invalid Amenity ID. No common amenity found with the given ID.");
+                    }
+                } else {
+                    System.out.println("Invalid input. Please enter a valid number.");
+                    scanner.next(); // clear the invalid input
+                }
+            }
 
             // Check if the amenity is already assigned to the property
             String checkSql = "SELECT COUNT(*) FROM Property_CommonAmenities WHERE PropertyID = ? AND AmenityID = ?";
@@ -664,21 +712,34 @@ public class CompanyManager implements CompanyManagerInterface {
             // Display available private amenities
             DBTablePrinter.printTable(conn, "PrivateAmenities");
 
-            System.out.print("Enter the Private Amenity ID to assign: ");
-            int privateAmenityId = scanner.nextInt();
+            int amenityId = -1;
+            boolean validAmenityId = false;
+            while (!validAmenityId) {
+                System.out.print("Enter the Private Amenity ID to assign: ");
+                if (scanner.hasNextInt()) {
+                    amenityId = scanner.nextInt();
+                    scanner.nextLine(); // consume the rest of the line
+                    validAmenityId = validatePrivateAmenityId(amenityId);
+                    if (!validAmenityId) {
+                        System.out.println("Invalid Amenity ID. No common amenity found with the given ID.");
+                    }
+                } else {
+                    System.out.println("Invalid input. Please enter a valid number.");
+                    scanner.next(); // clear the invalid input
+                }
+            }
 
             // Display apartments
             DBTablePrinter.printTable(conn, "Apartments");
 
             System.out.print("Enter the Apartment Number to assign this amenity: ");
-            int apartmentNumber = scanner.nextInt();
-            scanner.nextLine(); // consume the rest of the line
+            int apartmentNumber = validateApartmentID();
 
             // Check if the amenity is already assigned to the apartment
             String checkSql = "SELECT COUNT(*) FROM Apartment_PrivateAmenities WHERE AptNumber = ? AND PrivateAmenityID = ?";
             try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
                 checkStmt.setInt(1, apartmentNumber);
-                checkStmt.setInt(2, privateAmenityId);
+                checkStmt.setInt(2, amenityId);
                 ResultSet rs = checkStmt.executeQuery();
                 if (rs.next() && rs.getInt(1) > 0) {
                     System.out.println("This amenity is already assigned to the apartment.");
@@ -690,7 +751,7 @@ public class CompanyManager implements CompanyManagerInterface {
             String sql = "INSERT INTO Apartment_PrivateAmenities (AptNumber, PrivateAmenityID) VALUES (?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, apartmentNumber);
-                stmt.setInt(2, privateAmenityId);
+                stmt.setInt(2, amenityId);
 
                 int rowsAffected = stmt.executeUpdate();
                 if (rowsAffected > 0) {
@@ -818,7 +879,7 @@ public class CompanyManager implements CompanyManagerInterface {
                 if (cost >= 0) break;
                 else System.out.print("Invalid input. Please enter a non-negative number: ");
             } else {
-                System.out.print("Invalid input. Please enter a number: ");
+                System.out.print("Invalid input. Please enter a money value: $");
                 scanner.next(); // clear the invalid input
             }
         }
@@ -844,20 +905,55 @@ public class CompanyManager implements CompanyManagerInterface {
     private void editCommonAmenity() {
         DBTablePrinter.printTable(conn, "CommonAmenities");
 
-        System.out.print("Enter the Common Amenity ID to edit: ");
-        int amenityId = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
+        int amenityId = -1;
+        boolean validAmenityId = false;
+        while (!validAmenityId) {
+            System.out.print("Enter the Common Amenity ID to edit: ");
+            if (scanner.hasNextInt()) {
+                amenityId = scanner.nextInt();
+                scanner.nextLine(); // consume the rest of the line
+                validAmenityId = validateCommonAmenityId(amenityId);
+                if (!validAmenityId) {
+                    System.out.println("Invalid Amenity ID. No common amenity found with the given ID.");
+                }
+            } else {
+                System.out.println("Invalid input. Please enter a valid number.");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
-        System.out.print("New Common Amenity Name: ");
+        System.out.print("Enter common amenity name: ");
         String amenityName = scanner.nextLine();
+        if (amenityName.isEmpty()) {
+            System.out.println("Amenity name cannot be empty.");
+            return;
+        }
 
-        System.out.print("Is the amenity available (y/n)? ");
-        String isAvailableInput = scanner.nextLine();
-        String isAvailableStr = "y".equalsIgnoreCase(isAvailableInput) ? "Y" : "N";
-
-        System.out.print("New Cost: ");
-        double cost = scanner.nextDouble();
-        scanner.nextLine(); // consume the rest of the line
+        String isAvailableStr;
+        System.out.print("Is the amenity available (true/false)? ");
+        while (true) {
+            if (scanner.hasNextBoolean()) {
+                boolean isAvailable = scanner.nextBoolean();
+                isAvailableStr = isAvailable ? "Y" : "N";
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter 'true' or 'false': ");
+                scanner.next(); // clear the invalid input
+            }
+        }
+        
+        System.out.print("Enter cost: $");
+        double cost;
+        while (true) {
+            if (scanner.hasNextDouble()) {
+                cost = scanner.nextDouble();
+                if (cost >= 0) break;
+                else System.out.print("Invalid input. Please enter a non-negative number: ");
+            } else {
+                System.out.print("Invalid input. Please enter a money value: $");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
         String costType = standardizeCostType();
 
@@ -931,7 +1027,7 @@ public class CompanyManager implements CompanyManagerInterface {
                 if (cost >= 0) break;
                 else System.out.print("Invalid input. Please enter a non-negative number: ");
             } else {
-                System.out.print("Invalid input. Please enter a number: ");
+                System.out.print("Invalid input. Please enter a money value: $");
                 scanner.next(); // clear the invalid input
             }
         }
@@ -957,24 +1053,55 @@ public class CompanyManager implements CompanyManagerInterface {
     private void editPrivateAmenity() {
         DBTablePrinter.printTable(conn, "PrivateAmenities");
 
-        System.out.print("Enter the Private Amenity ID to edit: ");
-        int amenityId = scanner.nextInt();
-        scanner.nextLine(); // consume the rest of the line
+        int amenityId = -1;
+        boolean validAmenityId = false;
+        while (!validAmenityId) {
+            System.out.print("Enter the Private Amenity ID to edit: ");
+            if (scanner.hasNextInt()) {
+                amenityId = scanner.nextInt();
+                scanner.nextLine(); // consume the rest of the line
+                validAmenityId = validatePrivateAmenityId(amenityId);
+                if (!validAmenityId) {
+                    System.out.println("Invalid Amenity ID. No common amenity found with the given ID.");
+                }
+            } else {
+                System.out.println("Invalid input. Please enter a valid number.");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
-        System.out.print("New Private Amenity Name: ");
+        System.out.print("Private Amenity Name: ");
         String amenityName = scanner.nextLine();
 
-        System.out.print("Is the amenity available (y/n)? ");
-        String isAvailableInput = scanner.nextLine();
-        String isAvailableStr = "y".equalsIgnoreCase(isAvailableInput) ? "Y" : "N";
+        String isAvailableStr;
+        System.out.print("Is the amenity available (true/false)? ");
+        while (true) {
+            if (scanner.hasNextBoolean()) {
+                boolean isAvailable = scanner.nextBoolean();
+                isAvailableStr = isAvailable ? "Y" : "N";
+                break;
+            } else {
+                System.out.println("Invalid input. Please enter 'true' or 'false': ");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
-        System.out.print("New Cost: ");
-        double cost = scanner.nextDouble();
-        scanner.nextLine(); // consume the rest of the line
+        System.out.print("Enter cost: $");
+        double cost;
+        while (true) {
+            if (scanner.hasNextDouble()) {
+                cost = scanner.nextDouble();
+                if (cost >= 0) break;
+                else System.out.print("Invalid input. Please enter a non-negative number: ");
+            } else {
+                System.out.print("Invalid input. Please enter a money value: $");
+                scanner.next(); // clear the invalid input
+            }
+        }
 
         String costType = standardizeCostType();
 
-        String sql = "UPDATE PrivateAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE PrivateAmenityID = ?";
+        String sql = "UPDATE PrivateAmenities SET AmenityName = ?, IsAvailable = ?, Cost = ?, CostType = ? WHERE AmenityID = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, amenityName);
             stmt.setString(2, isAvailableStr);
@@ -1048,7 +1175,7 @@ public class CompanyManager implements CompanyManagerInterface {
 
     private String standardizeCostType() {
         while (true) {
-            System.out.print("New Cost Type (One-time, Monthly, Included): ");
+            System.out.print("Cost Type (One-time, Monthly, Included): ");
             String costTypeInput = scanner.nextLine();
 
             if (costTypeInput.equalsIgnoreCase("One-time")) {
@@ -1058,8 +1185,72 @@ public class CompanyManager implements CompanyManagerInterface {
             } else if (costTypeInput.equalsIgnoreCase("Included")) {
                 return "Included";
             } else {
-                System.out.println("Invalid input. Please enter 'One-time', 'Monthly', or 'Included'.");
+                System.out.println("Please enter 'One-time', 'Monthly', or 'Included'.");
             }
         }
     }
+
+    private boolean validateCommonAmenityId(int amenityId) {
+        String query = "SELECT COUNT(*) FROM CommonAmenities WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, amenityId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error validating amenity ID: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean validatePrivateAmenityId(int amenityId) {
+        String query = "SELECT COUNT(*) FROM PrivateAmenities WHERE AmenityID = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, amenityId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println("Error validating amenity ID: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private int validateApartmentID() {
+        int apartmentId = 0;
+        boolean validApartmentId = false;
+        while (!validApartmentId) {
+            System.out.print("Enter Apartment ID: ");
+            while (!scanner.hasNextInt()) {
+                System.out.println("Invalid input. Please enter a positive integer: ");
+                scanner.next(); // Clear the invalid input
+            }
+            apartmentId = scanner.nextInt();
+            scanner.nextLine(); // Consume the rest of the line
+
+            if (apartmentId > 0 && checkApartmentExists(apartmentId)) {
+                validApartmentId = true;
+            } else {
+                System.out.println("No apartment found with the given ID. Please enter a valid Apartment ID.");
+            }
+        }
+        return apartmentId;
+    }
+
+    private boolean checkApartmentExists(int apartmentId) {
+        String sql = "SELECT COUNT(*) FROM Apartments WHERE AptNumber = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, apartmentId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return false;
+    }
+
 }
