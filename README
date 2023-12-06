@@ -109,17 +109,8 @@ This interface allows for managing properties, apartments, and amenities.
 #### Financial Manager Interface
 This read-only interface allows for generating financial reports and viewing financial data.
 
-1. View Property Data: View the total rent and number of leases for each property.
+1. View Property Data: View the total rent and number of leases for each property. The total rent can be null if there are no apartment leases for that property.
 2. View Enterprise Financial Report: I joined the tables here to calculate the total revenue from rents and amenities.
-
-### Interfaces Overview
-Each interface in the system serves a specific role:
-
-- **Property Manager Interface:** Manages property-related data.
-- **Tenant Interface:** Allows tenants to check payment status, make payments, update personal data, add tenant(s) to lease. and add pet(s) to tenant.
-- **Company Manager Interface:** Manages company-level operations and data.
-- **Financial Manager Interface:** Generates financial reports and views financial data.
-- **Developer Interface:** Aids in database management and setup (not for testing).
 
 ### Assumptions and Notes
 - Assumptions are noted throughout the explanation of each interface.
