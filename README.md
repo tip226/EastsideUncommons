@@ -1,3 +1,7 @@
+Tina Pham
+tip226@lehigh.edu
+CSE241 Final Project
+
 To run and test this program:
 ```
 java -jar Test.jar
@@ -74,3 +78,5 @@ Assumptions and project notes:
 
 Citation
 I used the code from here to display most of the tables in my program: https://github.com/htorun/dbtableprinter. I found this github code by looking up on Google and found this stackoverflow post: https://stackoverflow.com/questions/15444982/how-to-display-or-print-the-contents-of-a-database-table-as-is. The only file that contains this code is DBTablePrinter.java
+Some of my data are from https://www.mockaroo.com/ 
+
