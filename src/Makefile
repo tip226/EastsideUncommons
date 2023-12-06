@@ -5,7 +5,7 @@ SRC_DIR=src
 INTERFACE_DIR=$(SRC_DIR)/interfaces
 BUILD_DIR=bin
 MANIFEST=Manifest.txt
-JAR_NAME=Test.jar
+JAR_NAME=tip226.jar
 SOURCES=$(wildcard $(SRC_DIR)/*.java) $(wildcard $(INTERFACE_DIR)/*.java)
 CLASSES=$(SOURCES:.java=.class)
 
@@ -13,7 +13,7 @@ all: $(CLASSES)
 	javac Test.java
 	javac interfaces/*.java
 	javac db/*.java
-	jar cvfm Test.jar Manifest.txt -C . .
+	jar cvfm $(JAR_NAME) Manifest.txt -C . .
 	$(JAVA) -jar $(JAR_NAME)
 
 clean:

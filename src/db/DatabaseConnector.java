@@ -24,10 +24,17 @@ public class DatabaseConnector {
             return null;
         }
 
-        do {
+        while (true) {
             try {
-                System.out.print("Enter Oracle user id: ");
+                System.out.print("Enter Oracle user id (or 'exit' to quit): ");
                 String user = scanner.nextLine();
+
+                // Allow user to exit the loop
+                if ("exit".equalsIgnoreCase(user)) {
+                    System.out.println("Exiting the connection setup.");
+                    return null;
+                }
+
                 char[] passArray = console.readPassword("Enter Oracle password for " + user + ": ");
                 String pass = new String(passArray);
 
@@ -35,11 +42,9 @@ public class DatabaseConnector {
                 System.out.println("Super! I'm connected.");
                 return conn;
             } catch (SQLException e) {
-                System.out.println("[Error]: Connection error. Re-enter login data.");
-                e.printStackTrace();
+                System.out.println("[Error]: Invalid username/password or connection error. Please try again.");
             }
-        } while (conn == null);
-        return null;
+        }
     }
 
     public void showMainMenu() {
