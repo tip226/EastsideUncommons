@@ -13,7 +13,7 @@ java -jar tip226.jar
 ```
 
 ### Compilation
-There's a makefile included in the submission. To compile the program, run:
+There's a makefile included in the `src` folder. To compile the program, run the following command in the `src` folder:
 ```
 make
 ```
